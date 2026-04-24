@@ -469,6 +469,9 @@ export default function App() {
   const [cloudLoaded, setCloudLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState("Offline lokalno");
   const [notifications, setNotifications] = useState([]);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -566,6 +569,14 @@ export default function App() {
   useEffect(() => {
     if (accessMode === "worker") setPage("worker");
   }, [accessMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -1269,8 +1280,8 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
   return (
     <div style={styles.page}>
       <PopupCenter notifications={notifications} />
-      <div style={styles.shell}>
-        <aside style={styles.sidebar}>
+      <div style={isMobile ? styles.shellMobile : styles.shell}>
+        <aside style={isMobile ? styles.sidebarMobile : styles.sidebar}>
           <div style={styles.brandBox}>
             <div style={styles.brandLogoWrap}>
               <img src={logoUrl} alt="AVM logo" style={styles.brandLogo} />
@@ -1341,8 +1352,8 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
           </div>
         </aside>
 
-        <main style={styles.main}>
-          <div style={styles.header}>
+        <main style={isMobile ? styles.mainMobile : styles.main}>
+          <div style={isMobile ? styles.headerMobile : styles.header}>
             <div>
               <h1 style={styles.h1}>AVM Evidencija Projekata</h1>
               <div style={styles.subtitle}>
@@ -1350,7 +1361,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
               </div>
               <div style={styles.syncStatus}>{syncStatus}</div>
             </div>
-            <div style={styles.headerButtons}>
+            <div style={isMobile ? styles.headerButtonsMobile : styles.headerButtons}>
               <div style={styles.userBadge}>
                 {userName} ({userRole})
               </div>
@@ -1925,7 +1936,8 @@ const styles = {
     color: "#0f172a",
     fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
-  shell: { display: "grid", gridTemplateColumns: "320px 1fr", minHeight: "100vh" },
+  shell: { display: "grid", gridTemplateColumns: "320px minmax(0, 1fr)", minHeight: "100vh" },
+  shellMobile: { display: "flex", flexDirection: "column", minHeight: "100vh" },
   sidebar: {
     background: "#0f172a",
     color: "#e2e8f0",
@@ -1934,6 +1946,15 @@ const styles = {
     flexDirection: "column",
     gap: 16,
     borderRight: "1px solid #1e293b",
+  },
+  sidebarMobile: {
+    background: "#0f172a",
+    color: "#e2e8f0",
+    padding: 14,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    borderBottom: "1px solid #1e293b",
   },
   brandBox: {
     padding: 18,
@@ -1979,13 +2000,21 @@ const styles = {
   projectCode: { fontSize: 12, fontWeight: 800, color: "#93c5fd" },
   projectName: { fontSize: 14, fontWeight: 700, marginTop: 4 },
   projectMetaMini: { fontSize: 12, marginTop: 6, color: "#94a3b8" },
-  main: { padding: 24, display: "flex", flexDirection: "column", gap: 20 },
+  main: { padding: 24, display: "flex", flexDirection: "column", gap: 20, minWidth: 0 },
+  mainMobile: { padding: 12, display: "flex", flexDirection: "column", gap: 14, minWidth: 0 },
   header: { display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" },
-  h1: { margin: 0, fontSize: 34, fontWeight: 900 },
+  headerMobile: { display: "flex", flexDirection: "column", gap: 12, alignItems: "stretch" },
+  h1: { margin: 0, fontSize: "clamp(24px, 6vw, 34px)", fontWeight: 900 },
   subtitle: { marginTop: 8, color: "#475569", fontSize: 14 },
   headerButtons: { display: "flex", gap: 10, flexWrap: "wrap" },
-  gridMain: { display: "grid", gridTemplateColumns: "minmax(420px, 560px) 1fr", gap: 20, alignItems: "start" },
-  card: { background: "#ffffff", borderRadius: 24, padding: 20, boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)", border: "1px solid #e2e8f0" },
+  headerButtonsMobile: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "stretch" },
+  gridMain: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
+    gap: 20,
+    alignItems: "start",
+  },
+  card: { background: "#ffffff", borderRadius: 24, padding: "clamp(14px, 3vw, 20px)", boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)", border: "1px solid #e2e8f0", minWidth: 0 },
   cardInset: { marginTop: 18, padding: 16, borderRadius: 18, border: "1px solid #e2e8f0", background: "#f8fafc" },
   cardTitle: { display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontSize: 18, marginBottom: 16 },
   cardTitleSmall: { display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 15, marginBottom: 10 },
@@ -2011,7 +2040,7 @@ const styles = {
     cursor: "pointer",
     fontWeight: 800,
   },
-  infoGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 },
+  infoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 },
   metaCard: { border: "1px solid #e2e8f0", borderRadius: 18, padding: 14, background: "#ffffff" },
   metaLabel: { fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, color: "#64748b", fontWeight: 800 },
   metaValue: { marginTop: 8, fontSize: 15, fontWeight: 700, color: "#0f172a" },
@@ -2022,7 +2051,7 @@ const styles = {
   noteMeta: { fontSize: 12, color: "#64748b", marginBottom: 6 },
   emptyText: { color: "#64748b", fontSize: 14 },
   tableWrap: { overflowX: "auto" },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 860 },
   mapWrap: { display: "flex", flexDirection: "column", gap: 10 },
   mapFrame: { width: "100%", height: 260, border: "1px solid #cbd5e1", borderRadius: 16, background: "#ffffff" },
   mapButton: { display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", border: "1px solid #cbd5e1", background: "#ffffff", color: "#0f172a", borderRadius: 14, padding: "10px 12px", width: "fit-content", fontWeight: 700 },
@@ -2032,7 +2061,7 @@ const styles = {
   offerItemCard: { border: "1px solid #e2e8f0", borderRadius: 16, padding: 14, background: "#ffffff" },
   offerItemHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   offerItemTitle: { fontWeight: 800, fontSize: 14 },
-  offerItemGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+  offerItemGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 },
   popupCenter: {
     position: "fixed",
     top: 18,
