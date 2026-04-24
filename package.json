@@ -1,0 +1,58 @@
+{
+  "name": "evidencija-konzervatorskih-predmeta",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.js",
+  "description": "Desktop aplikacija za evidenciju konzervatorskih predmeta, ponuda i projektne dokumentacije.",
+  "author": "OpenAI + korisnik",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_START_URL=http://localhost:5173 electron .\"",
+    "react": "vite",
+    "desktop": "electron .",
+    "build:web": "vite build",
+    "build:win": "npm run build:web && electron-builder --win portable nsis"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
+    "jspdf": "^2.5.1",
+    "lucide-react": "^0.453.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^32.2.1",
+    "electron-builder": "^25.1.8",
+    "vite": "^5.4.8",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.avm.evidencija.projekata",
+    "productName": "AVM Evidencija Projekata",
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "artifactName": "AVM-Evidencija-Projekata-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
