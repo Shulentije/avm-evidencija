@@ -820,6 +820,36 @@ export default function App() {
     setNewProject(emptyNewProject(projects.length + 1));
   }
 
+  async function deleteProject(projectId) {
+    if (!projectId) return;
+
+    const project = projects.find((item) => item.id === projectId);
+    const projectName = project?.nazivPredmeta || project?.projectCode || "odabrani predmet";
+
+    const confirmed = window.confirm(
+      `Da li sigurno želiš da obrišeš predmet:
+
+${projectName}?
+
+Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računaru se neće brisati.`
+    );
+
+    if (!confirmed) return;
+
+    const remainingProjects = projects.filter((item) => item.id !== projectId);
+    setProjects(remainingProjects);
+    setSelectedId(remainingProjects[0]?.id || null);
+
+    try {
+      const { error } = await supabase.from("projects").delete().eq("id", projectId);
+      if (error) throw error;
+      setSyncStatus("Predmet je obrisan i sinhronizovan online.");
+    } catch (error) {
+      console.error(error);
+      setSyncStatus("Predmet je obrisan lokalno, ali brisanje online nije uspjelo.");
+    }
+  }
+
   function addNote() {
     if (!selectedProject || !newNote.trim()) return;
     const noteText = newNote.trim();
@@ -1381,6 +1411,11 @@ export default function App() {
                       <button onClick={() => openProjectFolder(selectedProject)} style={styles.button}>
                         <FolderOpen size={16} /> Otvori folder projekta
                       </button>
+                      {isAdmin && (
+                        <button onClick={() => deleteProject(selectedProject.id)} style={styles.buttonDanger}>
+                          <Trash2 size={16} /> Obriši predmet
+                        </button>
+                      )}
                     </div>
 
                     <div style={styles.cardInset}>
@@ -1877,6 +1912,19 @@ const styles = {
   buttonSoft: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "1px solid #cbd5e1", background: "#ffffff", color: "#0f172a", borderRadius: 14, padding: "12px 14px", cursor: "pointer", fontWeight: 700 },
   buttonPrimary: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "1px solid #0f172a", background: "#0f172a", color: "#ffffff", borderRadius: 14, padding: "12px 16px", cursor: "pointer", fontWeight: 800, marginTop: 14 },
   deleteButton: { display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #fecaca", background: "#fff1f2", color: "#b91c1c", borderRadius: 12, padding: 8, cursor: "pointer" },
+  buttonDanger: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    border: "1px solid #fecaca",
+    background: "#fee2e2",
+    color: "#991b1b",
+    borderRadius: 14,
+    padding: "12px 14px",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
   infoGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 },
   metaCard: { border: "1px solid #e2e8f0", borderRadius: 18, padding: 14, background: "#ffffff" },
   metaLabel: { fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, color: "#64748b", fontWeight: 800 },
