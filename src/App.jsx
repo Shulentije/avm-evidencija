@@ -19,7 +19,8 @@ import {
 
 const STORAGE_BASE_KEY = "avm-evidencija-projekata";
 const ACTIVE_YEAR = new Date().getFullYear();
-const STORAGE_KEY = `${STORAGE_BASE_KEY}-${ACTIVE_YEAR}`;
+const LEGACY_STORAGE_KEY = `${STORAGE_BASE_KEY}-${ACTIVE_YEAR}`;
+const STORAGE_KEY = `${STORAGE_BASE_KEY}-all-years`;
 const SETTINGS_KEY = `${STORAGE_BASE_KEY}-settings`;
 
 const supabase = createClient(
@@ -42,7 +43,7 @@ const OLD_DEFAULT_OFFER_TEXTS = [
 function loadProjects() {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -67,10 +68,11 @@ function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
-function buildProjectCode(sequence, startDate) {
-  const date = startDate ? new Date(startDate) : new Date();
+function buildProjectCode(sequence, startDate, projectYear) {
+  const safeYear = Number(projectYear || ACTIVE_YEAR);
+  const date = startDate ? new Date(startDate) : new Date(`${safeYear}-01-01`);
   const month = pad2((date.getMonth() || 0) + 1);
-  const year = String(date.getFullYear()).slice(-2);
+  const year = String(safeYear || date.getFullYear()).slice(-2);
   return `KP. ${pad2(sequence)}-${month}/${year}`;
 }
 
@@ -200,9 +202,10 @@ function recalcChecklist(checklist = {}) {
   };
 }
 
-function emptyNewProject(projectCount) {
+function emptyNewProject(projectCount, projectYear = ACTIVE_YEAR) {
   return {
     projectSequence: projectCount + 1,
+    projectYear: Number(projectYear || ACTIVE_YEAR),
     startDate: todayIso(),
     nazivPredmeta: "",
     investitor: "",
@@ -254,6 +257,7 @@ function normalizeProject(project) {
     id: project.id || `PRJ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     projectCode: project.projectCode || "",
     projectSequence: Number(project.projectSequence || 1),
+    projectYear: Number(project.projectYear || (project.startDate ? new Date(project.startDate).getFullYear() : ACTIVE_YEAR)),
     startDate: project.startDate || todayIso(),
     nazivPredmeta: project.nazivPredmeta || "",
     investitor: project.investitor || "",
@@ -450,10 +454,11 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(() => loadProjects()[0]?.id || null);
   const [page, setPage] = useState("main");
   const [accessMode, setAccessMode] = useState("admin");
-  const [newProject, setNewProject] = useState(() => emptyNewProject(loadProjects().length));
+  const [newProject, setNewProject] = useState(() => emptyNewProject(loadProjects().length, ACTIVE_YEAR));
   const [newNote, setNewNote] = useState("");
   const [pdfStatus, setPdfStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [yearFilter, setYearFilter] = useState("all");
   const [saveMessage, setSaveMessage] = useState("");
   const [logoDataUrl, setLogoDataUrl] = useState("");
   const [logoAspectRatio, setLogoAspectRatio] = useState(1);
@@ -463,6 +468,7 @@ export default function App() {
   const [userName, setUserName] = useState("Korisnik");
   const [cloudLoaded, setCloudLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState("Offline lokalno");
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -641,11 +647,19 @@ export default function App() {
     };
   }, []);
 
+  const availableYears = useMemo(() => {
+    const years = new Set([ACTIVE_YEAR]);
+    projects.forEach((project) => years.add(Number(project.projectYear || ACTIVE_YEAR)));
+    return Array.from(years).filter(Boolean).sort((a, b) => b - a);
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return projects;
-    return projects.filter((project) =>
-      [
+    return projects.filter((project) => {
+      const matchesYear = yearFilter === "all" || String(project.projectYear || ACTIVE_YEAR) === String(yearFilter);
+      if (!matchesYear) return false;
+      if (!term) return true;
+      return [
         project.projectCode,
         project.nazivPredmeta,
         project.investitor,
@@ -654,25 +668,40 @@ export default function App() {
         project.parcela,
         project.katastarskaOpstina,
         project.opstina,
+        project.projectYear,
       ]
         .join(" ")
         .toLowerCase()
-        .includes(term)
-    );
-  }, [projects, search]);
+        .includes(term);
+    });
+  }, [projects, search, yearFilter]);
 
   const selectedProject =
     projects.find((project) => project.id === selectedId) || filteredProjects[0] || null;
 
+  const newProjectYear = Number(newProject.projectYear || ACTIVE_YEAR);
+  const suggestedSequenceForYear =
+    projects.filter((project) => Number(project.projectYear || ACTIVE_YEAR) === newProjectYear).length + 1;
+  const nextSequenceForYear = Number(newProject.projectSequence || suggestedSequenceForYear);
+
   const nextProjectCode = buildProjectCode(
-    Number(newProject.projectSequence || projects.length + 1),
-    newProject.startDate
+    nextSequenceForYear,
+    newProject.startDate,
+    newProjectYear
   );
 
   const nextProjectFolderPreview = buildProjectFolderPath(baseFolderPath, {
     ...newProject,
     projectCode: nextProjectCode,
   });
+
+  function showPopup(message) {
+    const id = `POP-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setNotifications((current) => [{ id, message, createdAt: new Date().toLocaleTimeString("sr-Latn-ME") }, ...current].slice(0, 4));
+    window.setTimeout(() => {
+      setNotifications((current) => current.filter((item) => item.id !== id));
+    }, 4500);
+  }
 
   function updateSelectedProject(updater) {
     setProjects((current) =>
@@ -687,8 +716,9 @@ export default function App() {
     updateSelectedProject((project) => {
       const nextProject = { ...project, [field]: value };
 
-      if (["startDate", "investitor", "projektant", "parcela", "katastarskaOpstina"].includes(field)) {
-        nextProject.projectCode = buildProjectCode(nextProject.projectSequence, nextProject.startDate);
+      if (["projectYear", "projectSequence", "startDate", "investitor", "projektant", "parcela", "katastarskaOpstina"].includes(field)) {
+        const year = Number(nextProject.projectYear || ACTIVE_YEAR);
+        nextProject.projectCode = buildProjectCode(nextProject.projectSequence, nextProject.startDate, year);
         nextProject.folderPath = buildProjectFolderPath(baseFolderPath, nextProject);
       }
 
@@ -697,6 +727,10 @@ export default function App() {
           ...project.checklist,
           offerOpis: buildDefaultOfferDescription(nextProject),
         };
+      }
+
+      if (field === "status" && project.status !== value) {
+        showPopup(`Status promijenjen: ${project.nazivPredmeta || project.projectCode} → ${value}`);
       }
 
       return nextProject;
@@ -782,12 +816,17 @@ export default function App() {
   }
 
   async function addProject() {
-    const sequence = Number(newProject.projectSequence || projects.length + 1);
+    const year = Number(newProject.projectYear || ACTIVE_YEAR);
+    const sequence = Number(
+      newProject.projectSequence ||
+        projects.filter((project) => Number(project.projectYear || ACTIVE_YEAR) === year).length + 1
+    );
     const projectDraft = {
       id: `PRJ-${Date.now()}`,
       ...newProject,
+      projectYear: year,
       projectSequence: sequence,
-      projectCode: buildProjectCode(sequence, newProject.startDate),
+      projectCode: buildProjectCode(sequence, newProject.startDate, year),
     };
 
     const created = normalizeProject({
@@ -817,7 +856,13 @@ export default function App() {
     setSelectedId(created.id);
     setPage(accessMode === "worker" ? "worker" : "main");
     setPdfStatus("");
-    setNewProject(emptyNewProject(projects.length + 1));
+    setNewProject(
+      emptyNewProject(
+        projects.filter((project) => Number(project.projectYear || ACTIVE_YEAR) === year).length + 1,
+        year
+      )
+    );
+    showPopup(`Novi predmet dodat: ${created.nazivPredmeta || created.projectCode}`);
   }
 
   async function deleteProject(projectId) {
@@ -868,6 +913,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
     }));
 
     setNewNote("");
+    showPopup(`Nova bilješka dodata: ${selectedProject.nazivPredmeta || selectedProject.projectCode}`);
   }
 
   function addOfferToProject() {
@@ -879,7 +925,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
 
     const offer = {
       id: `OFF-${Date.now()}`,
-      number: recalculated.ponudaBroj || `${selectedProject.projectSequence}-${ACTIVE_YEAR}`,
+      number: recalculated.ponudaBroj || `${selectedProject.projectSequence}-${selectedProject.projectYear || ACTIVE_YEAR}`,
       date: recalculated.ponudaDatum || todayIso(),
       amount,
       description: buildDefaultOfferDescription(selectedProject),
@@ -908,7 +954,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
 
     const checklist = recalcChecklist(project.checklist);
     const offer = project.offers[0] || {
-      number: checklist.ponudaBroj || `${project.projectSequence}-${ACTIVE_YEAR}`,
+      number: checklist.ponudaBroj || `${project.projectSequence}-${project.projectYear || ACTIVE_YEAR}`,
       date: checklist.ponudaDatum || todayIso(),
       amount: Number(checklist.ukupnaPonudaBezPdv || 0),
       description: buildDefaultOfferDescription(project),
@@ -1164,6 +1210,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
         "Faza II",
         "Ostvarena naplata",
         "Ukupno sa PDV",
+        "Godina",
         "Folder",
       ],
       ...projects.map((project) => [
@@ -1187,6 +1234,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
         project.checklist.faza2,
         project.checklist.ostvarenaNaplata,
         project.checklist.ukupnoSaPdv,
+        project.projectYear,
         project.folderPath || "",
       ]),
     ];
@@ -1220,6 +1268,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
 
   return (
     <div style={styles.page}>
+      <PopupCenter notifications={notifications} />
       <div style={styles.shell}>
         <aside style={styles.sidebar}>
           <div style={styles.brandBox}>
@@ -1257,6 +1306,16 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
                 Radnik
               </button>
             </div>
+          </div>
+
+          <div style={styles.sideSection}>
+            <div style={styles.smallTitle}>Godina</div>
+            <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={styles.input}>
+              <option value="all">Sve godine</option>
+              {availableYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
           </div>
 
           <div style={styles.sideSection}>
@@ -1338,6 +1397,12 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
                     </div>
                   </div>
 
+                  <Input label="Godina evidencije" type="number" value={newProject.projectYear} onChange={(e) => {
+                    const year = Number(e.target.value || ACTIVE_YEAR);
+                    const suggested = projects.filter((project) => Number(project.projectYear || ACTIVE_YEAR) === year).length + 1;
+                    setNewProject((p) => ({ ...p, projectYear: year, projectSequence: suggested }));
+                  }} />
+                  <Input label="Redni broj u godini" type="number" value={newProject.projectSequence} onChange={(e) => setNewProject((p) => ({ ...p, projectSequence: Number(e.target.value || 1) }))} />
                   <Input label="Naziv predmeta" value={newProject.nazivPredmeta} onChange={(e) => setNewProject((p) => ({ ...p, nazivPredmeta: e.target.value }))} />
                   <Input label="Investitor" value={newProject.investitor} onChange={(e) => setNewProject((p) => ({ ...p, investitor: e.target.value }))} />
                   <Input label="Projektant" value={newProject.projektant} onChange={(e) => setNewProject((p) => ({ ...p, projektant: e.target.value }))} />
@@ -1366,6 +1431,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
                   <>
                     <div style={styles.infoGrid}>
                       <MetaCard label="Br. projekta" value={selectedProject.projectCode} />
+                      <MetaCard label="Godina" value={selectedProject.projectYear} />
                       <MetaCard label="Vrsta radova" value={selectedProject.vrstaRadova} />
                       <MetaCard label="Folder projekta" value={selectedProject.folderPath || buildProjectFolderName(selectedProject)} />
                       <MetaCard label="Status" value={selectedProject.status} />
@@ -1377,6 +1443,8 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
                       </div>
 
                       <div style={styles.formGrid}>
+                        <Input label="Godina evidencije" type="number" value={selectedProject.projectYear} onChange={(e) => updateSelectedProjectField("projectYear", Number(e.target.value || ACTIVE_YEAR))} />
+                        <Input label="Redni broj u godini" type="number" value={selectedProject.projectSequence} onChange={(e) => updateSelectedProjectField("projectSequence", Number(e.target.value || 1))} />
                         <Input label="Naziv predmeta" value={selectedProject.nazivPredmeta} onChange={(e) => updateSelectedProjectField("nazivPredmeta", e.target.value)} />
                         <Input label="Investitor" value={selectedProject.investitor} onChange={(e) => updateSelectedProjectField("investitor", e.target.value)} />
                         <Input label="Projektant" value={selectedProject.projektant} onChange={(e) => updateSelectedProjectField("projektant", e.target.value)} />
@@ -1476,6 +1544,22 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+function PopupCenter({ notifications }) {
+  if (!notifications.length) return null;
+
+  return (
+    <div style={styles.popupCenter}>
+      {notifications.map((item) => (
+        <div key={item.id} style={styles.popupItem}>
+          <div style={styles.popupTitle}>Obavještenje</div>
+          <div style={styles.popupMessage}>{item.message}</div>
+          <div style={styles.popupTime}>{item.createdAt}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1643,6 +1727,7 @@ function ChecklistPage({ projects, isAdmin, accessMode, setSelectedId, setPage }
           <thead>
             <tr>
               <th>Br projekta</th>
+              <th>Godina</th>
               <th>Naziv</th>
               <th>Vrsta radova</th>
               <th>Status</th>
@@ -1668,6 +1753,7 @@ function ChecklistPage({ projects, isAdmin, accessMode, setSelectedId, setPage }
                 }}
               >
                 <td>{project.projectCode}</td>
+                <td>{project.projectYear || ACTIVE_YEAR}</td>
                 <td>{project.nazivPredmeta}</td>
                 <td>{project.vrstaRadova || "—"}</td>
                 <td>{project.status}</td>
@@ -1947,4 +2033,41 @@ const styles = {
   offerItemHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   offerItemTitle: { fontWeight: 800, fontSize: 14 },
   offerItemGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+  popupCenter: {
+    position: "fixed",
+    top: 18,
+    right: 18,
+    zIndex: 9999,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    width: 340,
+    maxWidth: "calc(100vw - 36px)",
+  },
+  popupItem: {
+    background: "#0f172a",
+    color: "#ffffff",
+    borderRadius: 18,
+    padding: "14px 16px",
+    boxShadow: "0 14px 35px rgba(15, 23, 42, 0.25)",
+    border: "1px solid #334155",
+  },
+  popupTitle: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: "#93c5fd",
+    fontWeight: 900,
+    marginBottom: 5,
+  },
+  popupMessage: {
+    fontSize: 14,
+    fontWeight: 800,
+    lineHeight: 1.35,
+  },
+  popupTime: {
+    fontSize: 12,
+    color: "#cbd5e1",
+    marginTop: 6,
+  },
 };
