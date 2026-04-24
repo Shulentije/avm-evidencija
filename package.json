@@ -4,16 +4,17 @@
   "private": true,
   "main": "main.js",
   "description": "Desktop aplikacija za evidenciju konzervatorskih predmeta, ponuda i projektne dokumentacije.",
-  "author": "OpenAI + korisnik",
+  "author": "AVM",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_START_URL=http://localhost:5173 electron .\"",
     "react": "vite",
     "desktop": "electron .",
+    "build": "vite build",
     "build:web": "vite build",
     "build:win": "npm run build:web && electron-builder --win portable nsis"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.104.1",
+    "@supabase/supabase-js": "^2.48.1",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",
@@ -35,13 +36,13 @@
       "dist/**/*",
       "main.js",
       "preload.js",
-      "renderer/**/*",
       "package.json"
     ],
     "directories": {
       "buildResources": "build"
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "portable",
         "nsis"

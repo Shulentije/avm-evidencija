@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-electron
+release
+out
+.env
+.git
+*.exe
+*.7z
+*.zip
+*.log
+dist/win-unpacked
