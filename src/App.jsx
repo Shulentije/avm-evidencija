@@ -68,10 +68,11 @@ function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
-function buildProjectCode(sequence, startDate, projectYear) {
+function buildProjectCode(sequence, startDate, projectYear, projectMonth) {
   const safeYear = Number(projectYear || ACTIVE_YEAR);
   const date = startDate ? new Date(startDate) : new Date(`${safeYear}-01-01`);
-  const month = pad2((date.getMonth() || 0) + 1);
+  const monthValue = Number(projectMonth || ((date.getMonth() || 0) + 1));
+  const month = pad2(monthValue);
   const year = String(safeYear || date.getFullYear()).slice(-2);
   return `KP. ${pad2(sequence)}-${month}/${year}`;
 }
@@ -224,10 +225,54 @@ function emptyNewProject(projectCount, projectYear = ACTIVE_YEAR) {
 }
 
 function normalizeProject(project) {
+  const year = Number(
+    project.projectYear ||
+      (project.startDate ? new Date(project.startDate).getFullYear() : ACTIVE_YEAR) ||
+      ACTIVE_YEAR
+  );
+  const month = Number(
+    project.projectMonth ||
+      (project.startDate ? new Date(project.startDate).getMonth() + 1 : 1)
+  );
+
+  const projectDraft = {
+    id:
+      project.id ||
+      `PRJ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    projectCode:
+      project.projectCode ||
+      buildProjectCode(
+        Number(project.projectSequence || 1),
+        project.startDate || todayIso(),
+        year,
+        month
+      ),
+    projectSequence: Number(project.projectSequence || 1),
+    projectYear: year,
+    projectMonth: month,
+    startDate: project.startDate || todayIso(),
+    nazivPredmeta: project.nazivPredmeta || "",
+    investitor: project.investitor || "",
+    projektant: project.projektant || "",
+    vrstaRadova: project.vrstaRadova || "",
+    parcela: project.parcela || "",
+    katastarskaOpstina: project.katastarskaOpstina || "",
+    urbanistickaParcela: project.urbanistickaParcela || "",
+    opstina: project.opstina || "",
+    planskiDokument: project.planskiDokument || "",
+    status: project.status || "U toku",
+    stage: project.stage || "Pokrenuto",
+    opis: project.opis || "",
+    googleMapsLink: project.googleMapsLink || "",
+    folderPath: project.folderPath || "",
+    notes: Array.isArray(project.notes) ? project.notes : [],
+    offers: Array.isArray(project.offers) ? project.offers : [],
+  };
+
   const baseChecklist = {
     ponudaBroj: project.checklist?.ponudaBroj || "",
     ponudaDatum: project.checklist?.ponudaDatum || "",
-    offerOpis: normalizeOfferOpis(project.checklist?.offerOpis, project),
+    offerOpis: normalizeOfferOpis(project.checklist?.offerOpis, projectDraft),
     pdvStopa: Number(project.checklist?.pdvStopa || 21),
     phase1Description: project.checklist?.phase1Description || DEFAULT_PHASE_1_TEXT,
     phase2Description: project.checklist?.phase2Description || DEFAULT_PHASE_2_TEXT,
@@ -254,27 +299,7 @@ function normalizeProject(project) {
   };
 
   return {
-    id: project.id || `PRJ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    projectCode: project.projectCode || "",
-    projectSequence: Number(project.projectSequence || 1),
-    projectYear: Number(project.projectYear || (project.startDate ? new Date(project.startDate).getFullYear() : ACTIVE_YEAR)),
-    startDate: project.startDate || todayIso(),
-    nazivPredmeta: project.nazivPredmeta || "",
-    investitor: project.investitor || "",
-    projektant: project.projektant || "",
-    vrstaRadova: project.vrstaRadova || "",
-    parcela: project.parcela || "",
-    katastarskaOpstina: project.katastarskaOpstina || "",
-    urbanistickaParcela: project.urbanistickaParcela || "",
-    opstina: project.opstina || "",
-    planskiDokument: project.planskiDokument || "",
-    status: project.status || "U toku",
-    stage: project.stage || "Pokrenuto",
-    opis: project.opis || "",
-    googleMapsLink: project.googleMapsLink || "",
-    folderPath: project.folderPath || "",
-    notes: Array.isArray(project.notes) ? project.notes : [],
-    offers: Array.isArray(project.offers) ? project.offers : [],
+    ...projectDraft,
     checklist: recalcChecklist(baseChecklist),
   };
 }
@@ -705,6 +730,7 @@ export default function App() {
     projects.find((project) => project.id === selectedId) || filteredProjects[0] || null;
 
   const newProjectYear = Number(newProject.projectYear || ACTIVE_YEAR);
+  const newProjectMonth = Number(newProject.projectMonth || (newProject.startDate ? new Date(newProject.startDate).getMonth() + 1 : 1));
   const suggestedSequenceForYear =
     projects.filter((project) => Number(project.projectYear || ACTIVE_YEAR) === newProjectYear).length + 1;
   const nextSequenceForYear = Number(newProject.projectSequence || suggestedSequenceForYear);
@@ -712,7 +738,8 @@ export default function App() {
   const nextProjectCode = buildProjectCode(
     nextSequenceForYear,
     newProject.startDate,
-    newProjectYear
+    newProjectYear,
+    newProjectMonth
   );
 
   const nextProjectFolderPreview = buildProjectFolderPath(baseFolderPath, {
@@ -741,9 +768,10 @@ export default function App() {
     updateSelectedProject((project) => {
       const nextProject = { ...project, [field]: value };
 
-      if (["projectYear", "projectSequence", "startDate", "investitor", "projektant", "parcela", "katastarskaOpstina"].includes(field)) {
+      if (["projectYear", "projectMonth", "projectSequence", "startDate", "investitor", "projektant", "parcela", "katastarskaOpstina"].includes(field)) {
         const year = Number(nextProject.projectYear || ACTIVE_YEAR);
-        nextProject.projectCode = buildProjectCode(nextProject.projectSequence, nextProject.startDate, year);
+        const month = Number(nextProject.projectMonth || (nextProject.startDate ? new Date(nextProject.startDate).getMonth() + 1 : 1));
+        nextProject.projectCode = buildProjectCode(nextProject.projectSequence, nextProject.startDate, year, month);
         nextProject.folderPath = buildProjectFolderPath(baseFolderPath, nextProject);
       }
 
@@ -854,8 +882,14 @@ export default function App() {
       id: `PRJ-${Date.now()}`,
       ...newProject,
       projectYear: year,
+      projectMonth: Number(newProject.projectMonth || (newProject.startDate ? new Date(newProject.startDate).getMonth() + 1 : 1)),
       projectSequence: sequence,
-      projectCode: buildProjectCode(sequence, newProject.startDate, year),
+      projectCode: buildProjectCode(
+        sequence,
+        newProject.startDate,
+        year,
+        Number(newProject.projectMonth || (newProject.startDate ? new Date(newProject.startDate).getMonth() + 1 : 1))
+      ),
     };
 
     const created = normalizeProject({
@@ -1359,6 +1393,12 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
             </button>
           )}
 
+          {userRole === "admin" && (
+            <button style={page === "dashboard" ? styles.navActive : styles.navButton} onClick={() => setPage("dashboard")}>
+              <ClipboardList size={18} /> Dashboard
+            </button>
+          )}
+
           <button style={page === "checklist" ? styles.navActive : styles.navButton} onClick={() => setPage("checklist")}>
             <ClipboardList size={18} /> Checklista
           </button>
@@ -1405,6 +1445,18 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
                   onClick={() => setSelectedId(project.id)}
                   style={selectedId === project.id ? styles.projectItemActive : styles.projectItem}
                 >
+                  {isAdmin && (
+                    <span
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteProject(project.id);
+                      }}
+                      style={styles.projectDeleteX}
+                      title="Obriši predmet"
+                    >
+                      ×
+                    </span>
+                  )}
                   <div style={styles.projectCode}>{project.projectCode}</div>
                   <div style={styles.projectName}>{project.nazivPredmeta || "Bez naziva"}</div>
                   <div style={styles.projectMetaMini}>{project.investitor || "—"}</div>
@@ -1478,6 +1530,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
                     const suggested = projects.filter((project) => Number(project.projectYear || ACTIVE_YEAR) === year).length + 1;
                     setNewProject((p) => ({ ...p, projectYear: year, projectSequence: suggested }));
                   }} />
+                  <Input label="Mjesec" type="number" min="1" max="12" value={newProject.projectMonth} onChange={(e) => setNewProject((p) => ({ ...p, projectMonth: Number(e.target.value || 1) }))} />
                   <Input label="Redni broj u godini" type="number" value={newProject.projectSequence} onChange={(e) => setNewProject((p) => ({ ...p, projectSequence: Number(e.target.value || 1) }))} />
                   <Input label="Naziv predmeta" value={newProject.nazivPredmeta} onChange={(e) => setNewProject((p) => ({ ...p, nazivPredmeta: e.target.value }))} />
                   <Input label="Investitor" value={newProject.investitor} onChange={(e) => setNewProject((p) => ({ ...p, investitor: e.target.value }))} />
@@ -1520,6 +1573,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
 
                       <div style={styles.formGrid}>
                         <Input label="Godina evidencije" type="number" value={selectedProject.projectYear} onChange={(e) => updateSelectedProjectField("projectYear", Number(e.target.value || ACTIVE_YEAR))} />
+                        <Input label="Mjesec" type="number" min="1" max="12" value={selectedProject.projectMonth} onChange={(e) => updateSelectedProjectField("projectMonth", Number(e.target.value || 1))} />
                         <Input label="Redni broj u godini" type="number" value={selectedProject.projectSequence} onChange={(e) => updateSelectedProjectField("projectSequence", Number(e.target.value || 1))} />
                         <Input label="Naziv predmeta" value={selectedProject.nazivPredmeta} onChange={(e) => updateSelectedProjectField("nazivPredmeta", e.target.value)} />
                         <Input label="Investitor" value={selectedProject.investitor} onChange={(e) => updateSelectedProjectField("investitor", e.target.value)} />
@@ -1602,6 +1656,8 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
               pdfStatus={pdfStatus}
             />
           )}
+
+          {page === "dashboard" && isAdmin && <DashboardPage projects={projects} yearFilter={yearFilter} />}
 
           {page === "checklist" && (
             <ChecklistPage projects={projects} isAdmin={isAdmin} accessMode={accessMode} setSelectedId={setSelectedId} setPage={setPage} />
@@ -1789,6 +1845,72 @@ function OffersPage({
         )}
       </section>
     </div>
+  );
+}
+
+function DashboardPage({ projects, yearFilter }) {
+  const visibleProjects = yearFilter === "all"
+    ? projects
+    : projects.filter((project) => String(project.projectYear || ACTIVE_YEAR) === String(yearFilter));
+
+  const totalProjects = visibleProjects.length;
+  const activeProjects = visibleProjects.filter((project) => project.status !== "Završeno").length;
+  const finishedProjects = visibleProjects.filter((project) => project.status === "Završeno").length;
+  const totalWithoutPdv = visibleProjects.reduce((sum, project) => sum + Number(project.checklist?.ukupnaPonudaBezPdv || 0), 0);
+  const totalWithPdv = visibleProjects.reduce((sum, project) => sum + Number(project.checklist?.ukupnoSaPdv || 0), 0);
+  const totalPaid = visibleProjects.reduce((sum, project) => sum + Number(project.checklist?.ostvarenaNaplata || 0), 0);
+  const unpaid = Math.max(totalWithPdv - totalPaid, 0);
+
+  const byStatus = visibleProjects.reduce((acc, project) => {
+    const key = project.status || "Bez statusa";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const byYear = projects.reduce((acc, project) => {
+    const key = project.projectYear || ACTIVE_YEAR;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <section style={styles.card}>
+      <div style={styles.cardTitle}>
+        <ClipboardList size={18} /> Admin dashboard
+      </div>
+
+      <div style={styles.dashboardGrid}>
+        <MetaCard label="Ukupno predmeta" value={totalProjects} />
+        <MetaCard label="Aktivni predmeti" value={activeProjects} />
+        <MetaCard label="Završeni predmeti" value={finishedProjects} />
+        <MetaCard label="Ukupno bez PDV" value={currency(totalWithoutPdv)} />
+        <MetaCard label="Ukupno sa PDV" value={currency(totalWithPdv)} />
+        <MetaCard label="Ostvarena naplata" value={currency(totalPaid)} />
+        <MetaCard label="Preostalo za naplatu" value={currency(unpaid)} />
+      </div>
+
+      <div style={styles.dashboardTwoCols}>
+        <div style={styles.cardInset}>
+          <div style={styles.cardTitleSmall}>Predmeti po statusu</div>
+          {Object.entries(byStatus).length ? Object.entries(byStatus).map(([status, count]) => (
+            <div key={status} style={styles.dashboardRow}>
+              <span>{status}</span>
+              <strong>{count}</strong>
+            </div>
+          )) : <div style={styles.emptyText}>Nema podataka.</div>}
+        </div>
+
+        <div style={styles.cardInset}>
+          <div style={styles.cardTitleSmall}>Predmeti po godini</div>
+          {Object.entries(byYear).sort((a, b) => Number(b[0]) - Number(a[0])).map(([year, count]) => (
+            <div key={year} style={styles.dashboardRow}>
+              <span>{year}</span>
+              <strong>{count}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2062,8 +2184,24 @@ const styles = {
   chip: { border: "1px solid #334155", background: "transparent", color: "#e2e8f0", padding: "8px 12px", borderRadius: 999, cursor: "pointer" },
   chipActive: { border: "1px solid #cbd5e1", background: "#e2e8f0", color: "#0f172a", padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontWeight: 700 },
   projectList: { display: "flex", flexDirection: "column", gap: 8, maxHeight: "45vh", overflowY: "auto" },
-  projectItem: { textAlign: "left", padding: 12, borderRadius: 14, border: "1px solid #334155", background: "#111827", color: "#e2e8f0", cursor: "pointer" },
-  projectItemActive: { textAlign: "left", padding: 12, borderRadius: 14, border: "1px solid #93c5fd", background: "#172554", color: "#eff6ff", cursor: "pointer" },
+  projectItem: { textAlign: "left", padding: 12, paddingRight: 34, borderRadius: 14, border: "1px solid #334155", background: "#111827", color: "#e2e8f0", cursor: "pointer", position: "relative" },
+  projectItemActive: { textAlign: "left", padding: 12, paddingRight: 34, borderRadius: 14, border: "1px solid #93c5fd", background: "#172554", color: "#eff6ff", cursor: "pointer", position: "relative" },
+  projectDeleteX: {
+    position: "absolute",
+    top: 8,
+    right: 10,
+    width: 20,
+    height: 20,
+    borderRadius: 999,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#fee2e2",
+    color: "#991b1b",
+    fontSize: 16,
+    fontWeight: 900,
+    lineHeight: 1,
+  },
   projectCode: { fontSize: 12, fontWeight: 800, color: "#93c5fd" },
   projectName: { fontSize: 14, fontWeight: 700, marginTop: 4 },
   projectMetaMini: { fontSize: 12, marginTop: 6, color: "#94a3b8" },
@@ -2108,6 +2246,9 @@ const styles = {
     fontWeight: 800,
   },
   infoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 },
+  dashboardGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 },
+  dashboardTwoCols: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 16, marginTop: 18 },
+  dashboardRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #e2e8f0", padding: "10px 0", fontSize: 14 },
   metaCard: { border: "1px solid #e2e8f0", borderRadius: 18, padding: 14, background: "#ffffff" },
   metaLabel: { fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, color: "#64748b", fontWeight: 800 },
   metaValue: { marginTop: 8, fontSize: 15, fontWeight: 700, color: "#0f172a" },
