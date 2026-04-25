@@ -1,6 +1,6 @@
 {
   "name": "evidencija-konzervatorskih-predmeta",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "main": "main.js",
   "description": "Desktop aplikacija za evidenciju konzervatorskih predmeta, ponuda i projektne dokumentacije.",
@@ -11,10 +11,12 @@
     "desktop": "electron .",
     "build": "vite build",
     "build:web": "vite build",
-    "build:win": "npm run build:web && electron-builder --win portable nsis"
+    "build:win": "npm run build:web && electron-builder --win nsis",
+    "publish:win": "npm run build:web && electron-builder --win nsis --publish always"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",
+    "electron-updater": "^6.8.3",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",
@@ -41,10 +43,16 @@
     "directories": {
       "buildResources": "build"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "OWNER",
+        "repo": "REPO"
+      }
+    ],
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        "portable",
         "nsis"
       ],
       "artifactName": "AVM-Evidencija-Projekata-${version}.${ext}"

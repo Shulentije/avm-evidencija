@@ -1,8 +1,15 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 
 let mainWindow = null;
+
+function sendUpdateStatus(message) {
+  if (mainWindow) {
+    mainWindow.webContents.send("update-message", message);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,9 +40,40 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
+  if (!process.env.ELECTRON_START_URL) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+autoUpdater.on("checking-for-update", () => {
+  sendUpdateStatus("Provjera dostupnih ažuriranja...");
+});
+
+autoUpdater.on("update-available", () => {
+  sendUpdateStatus("Dostupno je novo ažuriranje. Preuzimanje je u toku...");
+});
+
+autoUpdater.on("update-not-available", () => {
+  sendUpdateStatus("Aplikacija je ažurna.");
+});
+
+autoUpdater.on("error", (error) => {
+  sendUpdateStatus(`Greška pri ažuriranju: ${error.message}`);
+});
+
+autoUpdater.on("download-progress", (progress) => {
+  sendUpdateStatus(`Preuzimanje ažuriranja: ${Math.round(progress.percent)}%`);
+});
+
+autoUpdater.on("update-downloaded", () => {
+  sendUpdateStatus("Ažuriranje je preuzeto. Aplikacija će se restartovati.");
+  setTimeout(() => {
+    autoUpdater.quitAndInstall();
+  }, 1500);
 });
 
 app.on("window-all-closed", () => {
@@ -114,7 +152,6 @@ ipcMain.handle("desktop:save-pdf", async (_event, payload) => {
     }
 
     const pdfFolder = path.join(folderPath, "01_Ponude");
-
     fs.mkdirSync(pdfFolder, { recursive: true });
 
     const outputPath = path.join(pdfFolder, fileName);

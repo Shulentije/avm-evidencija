@@ -1291,6 +1291,38 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
 
   const isAdmin = userRole === "admin" && accessMode === "admin";
 
+  async function saveNow() {
+    try {
+      const normalizedProjects = projects.map(normalizeProject);
+      const now = new Date().toISOString();
+
+      setSyncStatus("Ručno čuvanje u toku...");
+
+      if (session?.user?.id && userRole === "admin") {
+        const rows = normalizedProjects.map((project) => ({
+          id: project.id,
+          owner_id: session.user.id,
+          data: project,
+          updated_at: now,
+        }));
+
+        const { error } = await supabase.from("projects").upsert(rows, { onConflict: "id" });
+        if (error) throw error;
+      }
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedProjects));
+      }
+
+      setSyncStatus("Sačuvano.");
+      showPopup("Podaci su ručno sačuvani.");
+    } catch (error) {
+      console.error(error);
+      setSyncStatus("Greška pri ručnom čuvanju.");
+      showPopup("Greška pri čuvanju podataka.");
+    }
+  }
+
   async function logout() {
     await supabase.auth.signOut();
   }
@@ -1395,6 +1427,9 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
               <div style={styles.userBadge}>
                 {userName} ({userRole})
               </div>
+              <button onClick={saveNow} style={styles.buttonSoft}>
+                Sačuvaj
+              </button>
               <button onClick={logout} style={styles.buttonSoft}>
                 Odjavi se
               </button>
