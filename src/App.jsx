@@ -478,46 +478,59 @@ export default function App() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects.map(normalizeProject)));
   }, [projects]);
 
+  async function loadProjectsFromCloud(showLoading = true) {
+    if (!session?.user?.id) return;
+
+    if (showLoading) setSyncStatus("Učitavanje online projekata...");
+
+    const { data, error } = await supabase
+      .from("projects")
+      .select("id, data, updated_at")
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setSyncStatus("Online učitavanje nije uspjelo, koristi se lokalna kopija.");
+      setCloudLoaded(true);
+      return;
+    }
+
+    const cloudProjects = Array.isArray(data)
+      ? data.map((row) => normalizeProject(row.data || { id: row.id }))
+      : [];
+
+    if (cloudProjects.length) {
+      setProjects(cloudProjects);
+      setSelectedId((current) => current || cloudProjects[0]?.id || null);
+      setSyncStatus(showLoading ? "Online projekti učitani." : "Podaci osvježeni u realnom vremenu.");
+    } else {
+      setSyncStatus("Online baza je prazna. Novi projekti će se sinhronizovati.");
+    }
+
+    setCloudLoaded(true);
+  }
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    loadProjectsFromCloud(true);
+  }, [session?.user?.id]);
+
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    let active = true;
-
-    async function loadProjectsFromCloud() {
-      setSyncStatus("Učitavanje online projekata...");
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id, data, updated_at")
-        .order("updated_at", { ascending: false });
-
-      if (!active) return;
-
-      if (error) {
-        console.error(error);
-        setSyncStatus("Online učitavanje nije uspjelo, koristi se lokalna kopija.");
-        setCloudLoaded(true);
-        return;
-      }
-
-      const cloudProjects = Array.isArray(data)
-        ? data.map((row) => normalizeProject(row.data || { id: row.id }))
-        : [];
-
-      if (cloudProjects.length) {
-        setProjects(cloudProjects);
-        setSelectedId((current) => current || cloudProjects[0]?.id || null);
-        setSyncStatus("Online projekti učitani.");
-      } else {
-        setSyncStatus("Online baza je prazna. Novi projekti će se sinhronizovati.");
-      }
-
-      setCloudLoaded(true);
-    }
-
-    loadProjectsFromCloud();
+    const channel = supabase
+      .channel("projects-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        () => {
+          loadProjectsFromCloud(false);
+        }
+      )
+      .subscribe();
 
     return () => {
-      active = false;
+      supabase.removeChannel(channel);
     };
   }, [session?.user?.id]);
 
