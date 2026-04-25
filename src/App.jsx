@@ -568,7 +568,8 @@ export default function App() {
 
   useEffect(() => {
     if (accessMode === "worker") setPage("worker");
-  }, [accessMode]);
+    if (userRole !== "admin" && (page === "main" || page === "offers")) setPage("worker");
+  }, [accessMode, userRole, page]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -827,6 +828,10 @@ export default function App() {
   }
 
   async function addProject() {
+    if (userRole !== "admin") {
+      window.alert("Samo admin može kreirati nove predmete.");
+      return;
+    }
     const year = Number(newProject.projectYear || ACTIVE_YEAR);
     const sequence = Number(
       newProject.projectSequence ||
@@ -928,6 +933,10 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
   }
 
   function addOfferToProject() {
+    if (userRole !== "admin") {
+      window.alert("Samo admin može kreirati ponude.");
+      return;
+    }
     if (!selectedProject) return;
 
     const recalculated = recalcChecklist(selectedProject.checklist);
@@ -961,6 +970,10 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
   }
 
   async function exportOfferPdf(project) {
+    if (userRole !== "admin") {
+      window.alert("Samo admin može izvoziti ponude.");
+      return;
+    }
     if (!project) return;
 
     const checklist = recalcChecklist(project.checklist);
@@ -1289,13 +1302,17 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
             <div style={styles.brandSubtitle}>Evidencija projekata</div>
           </div>
 
-          <button style={page === "main" ? styles.navActive : styles.navButton} onClick={() => setPage("main")}>
-            <ShieldCheck size={18} /> MAIN page
-          </button>
+          {userRole === "admin" && (
+            <button style={page === "main" ? styles.navActive : styles.navButton} onClick={() => setPage("main")}>
+              <ShieldCheck size={18} /> MAIN page
+            </button>
+          )}
 
-          <button style={page === "offers" ? styles.navActive : styles.navButton} onClick={() => setPage("offers")}>
-            <FileText size={18} /> Ponude
-          </button>
+          {userRole === "admin" && (
+            <button style={page === "offers" ? styles.navActive : styles.navButton} onClick={() => setPage("offers")}>
+              <FileText size={18} /> Ponude
+            </button>
+          )}
 
           <button style={page === "checklist" ? styles.navActive : styles.navButton} onClick={() => setPage("checklist")}>
             <ClipboardList size={18} /> Checklista
@@ -1525,7 +1542,7 @@ Predmet će biti obrisan iz aplikacije i online baze. Lokalni folder na računar
             </div>
           )}
 
-          {page === "offers" && (
+          {page === "offers" && isAdmin && (
             <OffersPage
               selectedProject={selectedProject}
               updateChecklistField={updateChecklistField}
@@ -1743,7 +1760,7 @@ function ChecklistPage({ projects, isAdmin, accessMode, setSelectedId, setPage }
               <th>Vrsta radova</th>
               <th>Status</th>
               <th>Stadijum</th>
-              <th>Ponuda</th>
+              {isAdmin && <th>Ponuda</th>}
               <th>Analiza završena</th>
               <th>Projekat završen</th>
               {isAdmin && <th>Bez PDV</th>}
@@ -1769,11 +1786,13 @@ function ChecklistPage({ projects, isAdmin, accessMode, setSelectedId, setPage }
                 <td>{project.vrstaRadova || "—"}</td>
                 <td>{project.status}</td>
                 <td>{project.stage}</td>
-                <td>
-                  {project.checklist.ponudaBroj
-                    ? `${project.checklist.ponudaBroj} / ${formatDisplayDate(project.checklist.ponudaDatum) || ""}`
-                    : "—"}
-                </td>
+                {isAdmin && (
+                  <td>
+                    {project.checklist.ponudaBroj
+                      ? `${project.checklist.ponudaBroj} / ${formatDisplayDate(project.checklist.ponudaDatum) || ""}`
+                      : "—"}
+                  </td>
+                )}
                 <td>{project.checklist.analizaZavrsena || "—"}</td>
                 <td>{project.checklist.projekatZavrsen || "—"}</td>
                 {isAdmin && <td>{currency(project.checklist.ukupnaPonudaBezPdv)}</td>}
