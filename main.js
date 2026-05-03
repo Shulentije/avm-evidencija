@@ -17,7 +17,7 @@ function createWindow() {
     height: 980,
     minWidth: 1200,
     minHeight: 800,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f0eee8",
     autoHideMenuBar: false,
     icon: path.join(__dirname, "build", "icon.ico"),
     webPreferences: {
@@ -105,7 +105,7 @@ ipcMain.handle("desktop:create-project-folder", async (_event, folderPath) => {
       "01_Ponude",
       "02_Dokumentacija",
       "03_Projekat",
-      "04_Uprava_za_zastitu_kulturnih_dobara",
+      "04_UZKD",
       "05_Fotografije",
       "06_Izlazni_PDF",
     ];
@@ -151,7 +151,7 @@ ipcMain.handle("desktop:save-pdf", async (_event, payload) => {
       throw new Error("Nedostaju podaci za snimanje PDF-a.");
     }
 
-    const pdfFolder = path.join(folderPath, "01_Ponude");
+    const pdfFolder = path.join(folderPath, "06_Izlazni_PDF");
     fs.mkdirSync(pdfFolder, { recursive: true });
 
     const outputPath = path.join(pdfFolder, fileName);
