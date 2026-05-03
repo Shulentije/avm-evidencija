@@ -510,7 +510,7 @@ function LoginScreen() {
 /* ═══════════════════════════════════════════
    PIPELINE KANBAN KARTICA
    ═══════════════════════════════════════════ */
-function PipelineCard({ project, isSelected, onClick }) {
+function PipelineCard({ project, isSelected, onClick, isMobile }) {
   const [hovered, setHovered] = useState(false);
   const borderColor = isSelected ? MOSS : hovered ? SAGE : "transparent";
   const textColor = isSelected || hovered ? INK : SAGE;
@@ -521,24 +521,25 @@ function PipelineCard({ project, isSelected, onClick }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        padding: "10px 12px", borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
+        padding: isMobile ? "14px 14px" : "10px 12px", borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
         border: `1.5px solid ${borderColor}`, background: PAPER, marginBottom: 6,
+        minHeight: isMobile ? 44 : "auto",
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: "0.04em" }}>{project.projectCode}</div>
+      <div style={{ fontSize: isMobile ? 12 : 10, fontWeight: 700, color: MUTED, letterSpacing: "0.04em" }}>{project.projectCode}</div>
       <div style={{
-        fontSize: 13, fontWeight: 600, color: textColor, marginTop: 3, transition: "color 0.15s",
+        fontSize: isMobile ? 15 : 13, fontWeight: 600, color: textColor, marginTop: 3, transition: "color 0.15s",
         fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {project.nazivPredmeta || "Bez naziva"}
       </div>
-      <div style={{ fontSize: 11, color: MUTED, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: isMobile ? 14 : 11, color: MUTED, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {project.investitor || "—"}
       </div>
       {project.assignedTo && (
-        <div style={{ fontSize: 10, color: SAGE, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
-          <User size={10} /> {project.assignedTo}
+        <div style={{ fontSize: isMobile ? 12 : 10, color: SAGE, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+          <User size={isMobile ? 12 : 10} /> {project.assignedTo}
         </div>
       )}
     </div>
@@ -574,23 +575,45 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
     <div style={{
       position: "fixed", top: 0, right: 0, bottom: 0,
       width: isMobile ? "100%" : 460, maxWidth: "100vw",
-      background: PAPER, borderLeft: `1px solid ${RULE}`,
-      boxShadow: "-8px 0 30px rgba(14,14,14,0.08)", zIndex: 1000,
+      background: PAPER, borderLeft: isMobile ? "none" : `1px solid ${RULE}`,
+      boxShadow: isMobile ? "none" : "-8px 0 30px rgba(14,14,14,0.08)", zIndex: 1000,
       display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif",
-      overflowY: "auto",
+      overflowY: "auto", left: isMobile ? 0 : "auto",
     }}>
       {/* Header */}
-      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${RULE}`, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: PAPER, zIndex: 1 }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: "0.06em" }}>{project.projectCode}</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: INK, marginTop: 2, fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>
+      <div style={{ padding: isMobile ? "0" : "16px 20px", borderBottom: `1px solid ${RULE}`, display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: PAPER, zIndex: 1 }}>
+        {isMobile ? (
+          <button onClick={onClose} style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "14px 16px",
+            background: "none", border: "none", cursor: "pointer", minHeight: 48,
+            fontSize: 15, fontWeight: 600, color: MOSS, fontFamily: "'Inter', sans-serif",
+          }}>
+            <ChevronRight size={18} style={{ transform: "rotate(180deg)" }} /> Nazad
+          </button>
+        ) : (
+          <>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: "0.06em" }}>{project.projectCode}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: INK, marginTop: 2, fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>
+                {project.nazivPredmeta || "Bez naziva"}
+              </div>
+            </div>
+            <Btn onClick={onClose} style={{ padding: 6 }}><X size={16} /></Btn>
+          </>
+        )}
+      </div>
+
+      {/* Mobile project title below back button */}
+      {isMobile && (
+        <div style={{ padding: "8px 16px 12px", borderBottom: `1px solid ${RULE}` }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, letterSpacing: "0.06em" }}>{project.projectCode}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: INK, marginTop: 4, fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>
             {project.nazivPredmeta || "Bez naziva"}
           </div>
         </div>
-        <Btn onClick={onClose} style={{ padding: 6 }}><X size={16} /></Btn>
-      </div>
+      )}
 
-      <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ padding: isMobile ? "16px 16px 24px" : 20, display: "flex", flexDirection: "column", gap: 20 }}>
         {/* Info grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <MetaCard label="Investitor" value={project.investitor} />
@@ -702,24 +725,29 @@ function PipelineView({ projects, selectedId, setSelectedId, onOpenPanel, isMobi
   }, [projects]);
 
   if (isMobile) {
-    const [activeStage, setActiveStage] = useState(PIPELINE_STAGES[0]);
     return (
-      <div>
-        <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 8, marginBottom: 12 }}>
-          {PIPELINE_STAGES.map((stage) => (
-            <Btn key={stage} active={activeStage === stage} onClick={() => setActiveStage(stage)}
-              style={{ fontSize: 11, padding: "6px 10px", flexShrink: 0 }}>
-              {stage} <span style={{ opacity: 0.6, marginLeft: 2 }}>({stageGroups[stage].length})</span>
-            </Btn>
-          ))}
-        </div>
-        <div>
-          {stageGroups[activeStage].map((p) => (
-            <PipelineCard key={p.id} project={p} isSelected={selectedId === p.id}
-              onClick={() => { setSelectedId(p.id); onOpenPanel(p.id); }} />
-          ))}
-          {!stageGroups[activeStage].length && <div style={{ color: MUTED, fontSize: 12, padding: 16 }}>Nema projekata u ovoj fazi.</div>}
-        </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {PIPELINE_STAGES.map((stage) => (
+          <div key={stage}>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 0", borderBottom: `2px solid ${RULE}`, marginBottom: 10,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase" }}>{stage}</span>
+              <span style={{
+                background: CREAM, color: MUTED, fontSize: 11, fontWeight: 800,
+                padding: "3px 9px", borderRadius: 10, minWidth: 20, textAlign: "center",
+              }}>{stageGroups[stage].length}</span>
+            </div>
+            <div>
+              {stageGroups[stage].map((p) => (
+                <PipelineCard key={p.id} project={p} isSelected={selectedId === p.id}
+                  onClick={() => { setSelectedId(p.id); onOpenPanel(p.id); }} isMobile />
+              ))}
+              {!stageGroups[stage].length && <div style={{ color: MUTED, fontSize: 14, padding: 16 }}>Nema projekata u ovoj fazi.</div>}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -757,7 +785,7 @@ function PipelineView({ projects, selectedId, setSelectedId, onOpenPanel, isMobi
 /* ═══════════════════════════════════════════
    DASHBOARD POGLED
    ═══════════════════════════════════════════ */
-function DashboardView({ projects, yearFilter }) {
+function DashboardView({ projects, yearFilter, isMobile }) {
   const visible = yearFilter === "all"
     ? projects
     : projects.filter((p) => String(p.projectYear) === String(yearFilter));
@@ -791,7 +819,7 @@ function DashboardView({ projects, yearFilter }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Top cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
         <MetaCard large label="Ukupno predmeta" value={total} />
         <MetaCard large label="Aktivni" value={active} />
         <MetaCard large label="Završeni" value={finished} />
@@ -801,7 +829,7 @@ function DashboardView({ projects, yearFilter }) {
         <MetaCard large label="Za naplatu" value={currency(unpaid)} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
         {/* Stage bar chart */}
         <div style={{ background: CREAM, borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>Projekti po fazi</div>
@@ -860,50 +888,57 @@ function DashboardView({ projects, yearFilter }) {
 /* ═══════════════════════════════════════════
    CHECKLISTA POGLED
    ═══════════════════════════════════════════ */
-function ChecklistView({ projects, isAdmin, setSelectedId, onOpenPanel }) {
+function ChecklistView({ projects, isAdmin, setSelectedId, onOpenPanel, isMobile }) {
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 900 }}>
-        <thead>
-          <tr style={{ borderBottom: `2px solid ${RULE}` }}>
-            {["Br.", "God.", "Naziv", "Investitor", "Vrsta radova", "Faza", "Status", "Radnik",
-              ...(isAdmin ? ["Ponuda", "Analiza", "Projekat završen", "Bez PDV", "Faza I", "Faza II", "Naplata", "+PDV"] : ["Analiza", "Projekat završen"]),
-            ].map((h) => (
-              <th key={h} style={{ textAlign: "left", padding: "8px 6px", fontWeight: 700, color: SAGE, fontSize: 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((p) => (
-            <tr key={p.id} onClick={() => { setSelectedId(p.id); onOpenPanel(p.id); }}
-              style={{ cursor: "pointer", borderBottom: `1px solid ${RULE}`, transition: "background 0.1s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-            >
-              <td style={{ padding: "8px 6px", fontWeight: 700, fontSize: 11, color: MOSS, whiteSpace: "nowrap" }}>{p.projectCode}</td>
-              <td style={{ padding: "8px 6px", color: MUTED }}>{p.projectYear}</td>
-              <td style={{ padding: "8px 6px", fontWeight: 600, color: INK, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>{p.nazivPredmeta || "—"}</td>
-              <td style={{ padding: "8px 6px", color: INK, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.investitor || "—"}</td>
-              <td style={{ padding: "8px 6px", color: SAGE }}>{p.vrstaRadova || "—"}</td>
-              <td style={{ padding: "8px 6px" }}>
-                <span style={{ fontSize: 10, fontWeight: 700, background: p.stage === "Završeno" ? "#e8f0e8" : CREAM, color: p.stage === "Završeno" ? MOSS : INK, padding: "3px 8px", borderRadius: 4 }}>
-                  {p.stage}
-                </span>
-              </td>
-              <td style={{ padding: "8px 6px", color: SAGE }}>{p.status}</td>
-              <td style={{ padding: "8px 6px", color: SAGE }}>{p.assignedTo || "—"}</td>
-              {isAdmin && <td style={{ padding: "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{p.checklist.ponudaBroj ? `${p.checklist.ponudaBroj}` : "—"}</td>}
-              <td style={{ padding: "8px 6px", color: SAGE }}>{p.checklist.analizaZavrsena || "—"}</td>
-              <td style={{ padding: "8px 6px", color: SAGE }}>{p.checklist.projekatZavrsen || "—"}</td>
-              {isAdmin && <td style={{ padding: "8px 6px", fontWeight: 600, color: INK, whiteSpace: "nowrap" }}>{currency(p.checklist.ukupnaPonudaBezPdv)}</td>}
-              {isAdmin && <td style={{ padding: "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{currency(p.checklist.faza1)}</td>}
-              {isAdmin && <td style={{ padding: "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{currency(p.checklist.faza2)}</td>}
-              {isAdmin && <td style={{ padding: "8px 6px", color: MOSS, fontWeight: 600, whiteSpace: "nowrap" }}>{currency(p.checklist.ostvarenaNaplata)}</td>}
-              {isAdmin && <td style={{ padding: "8px 6px", fontWeight: 700, color: INK, whiteSpace: "nowrap" }}>{currency(p.checklist.ukupnoSaPdv)}</td>}
+    <div>
+      {isMobile && (
+        <div style={{ fontSize: 12, color: MUTED, marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+          <ChevronRight size={12} /> Povuci horizontalno za više kolona
+        </div>
+      )}
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: isMobile ? 14 : 12, minWidth: 900 }}>
+          <thead>
+            <tr style={{ borderBottom: `2px solid ${RULE}` }}>
+              {["Br.", "God.", "Naziv", "Investitor", "Vrsta radova", "Faza", "Status", "Radnik",
+                ...(isAdmin ? ["Ponuda", "Analiza", "Projekat završen", "Bez PDV", "Faza I", "Faza II", "Naplata", "+PDV"] : ["Analiza", "Projekat završen"]),
+              ].map((h) => (
+                <th key={h} style={{ textAlign: "left", padding: isMobile ? "12px 8px" : "8px 6px", fontWeight: 700, color: SAGE, fontSize: isMobile ? 12 : 10, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {projects.map((p) => (
+              <tr key={p.id} onClick={() => { setSelectedId(p.id); onOpenPanel(p.id); }}
+                style={{ cursor: "pointer", borderBottom: `1px solid ${RULE}`, transition: "background 0.1s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = CREAM; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", fontWeight: 700, fontSize: isMobile ? 13 : 11, color: MOSS, whiteSpace: "nowrap", minHeight: isMobile ? 44 : "auto" }}>{p.projectCode}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: MUTED }}>{p.projectYear}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", fontWeight: 600, color: INK, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>{p.nazivPredmeta || "—"}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: INK, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.investitor || "—"}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.vrstaRadova || "—"}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px" }}>
+                  <span style={{ fontSize: isMobile ? 12 : 10, fontWeight: 700, background: p.stage === "Završeno" ? "#e8f0e8" : CREAM, color: p.stage === "Završeno" ? MOSS : INK, padding: "3px 8px", borderRadius: 4 }}>
+                    {p.stage}
+                  </span>
+                </td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.status}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.assignedTo || "—"}</td>
+                {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{p.checklist.ponudaBroj ? `${p.checklist.ponudaBroj}` : "—"}</td>}
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.checklist.analizaZavrsena || "—"}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.checklist.projekatZavrsen || "—"}</td>
+                {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", fontWeight: 600, color: INK, whiteSpace: "nowrap" }}>{currency(p.checklist.ukupnaPonudaBezPdv)}</td>}
+                {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{currency(p.checklist.faza1)}</td>}
+                {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{currency(p.checklist.faza2)}</td>}
+                {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: MOSS, fontWeight: 600, whiteSpace: "nowrap" }}>{currency(p.checklist.ostvarenaNaplata)}</td>}
+                {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", fontWeight: 700, color: INK, whiteSpace: "nowrap" }}>{currency(p.checklist.ukupnoSaPdv)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1471,12 +1506,31 @@ export default function App() {
   // ═══════════════ RENDER ═══════════════
   return (
     <div style={{ minHeight: "100vh", background: LINEN, color: INK, fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
+      {/* Global mobile responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          input, select, textarea {
+            font-size: 14px !important;
+            min-height: 44px !important;
+            padding: 10px 12px !important;
+          }
+          textarea {
+            min-height: 80px !important;
+          }
+          button {
+            min-height: 44px !important;
+          }
+          label > div:first-child {
+            font-size: 12px !important;
+          }
+        }
+      `}</style>
       <PopupCenter notifications={notifications} />
 
       {/* Side panel overlay */}
       {panelProjectId && (
         <>
-          <div onClick={() => setPanelProjectId(null)} style={{ position: "fixed", inset: 0, background: "rgba(14,14,14,0.15)", zIndex: 999 }} />
+          {!isMobile && <div onClick={() => setPanelProjectId(null)} style={{ position: "fixed", inset: 0, background: "rgba(14,14,14,0.15)", zIndex: 999 }} />}
           <SidePanel
             project={panelProject}
             onClose={() => setPanelProjectId(null)}
@@ -1606,18 +1660,17 @@ export default function App() {
         )}
 
         {/* ═══════════ MAIN CONTENT ═══════════ */}
-        <main style={{ flex: 1, padding: isMobile ? "12px 12px 80px" : "20px 24px", overflowX: "hidden" }}>
+        <main style={{ flex: 1, padding: isMobile ? "12px 14px 90px" : "20px 24px", overflowX: "hidden" }}>
           {/* Mobile top bar */}
           {isMobile && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <img src={logoUrl} alt="AVM" style={{ width: 24, height: 24, objectFit: "contain" }} />
-                <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: "0.06em" }}>AVM</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <img src={logoUrl} alt="AVM" style={{ width: 28, height: 28, objectFit: "contain" }} />
+                <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.06em" }}>AVM</span>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                {isAdmin && <Btn onClick={() => setShowNewForm(true)} style={{ padding: "6px 10px", fontSize: 11 }}><Plus size={13} /></Btn>}
-                <Btn onClick={saveNow} style={{ padding: "6px 10px", fontSize: 11 }}><Save size={13} /></Btn>
-                <Btn onClick={logout} style={{ padding: "6px 10px", fontSize: 11 }}><LogOut size={13} /></Btn>
+                <Btn onClick={saveNow} style={{ padding: "10px 12px", fontSize: 12, minHeight: 44 }}><Save size={16} /></Btn>
+                <Btn onClick={logout} style={{ padding: "10px 12px", fontSize: 12, minHeight: 44 }}><LogOut size={16} /></Btn>
               </div>
             </div>
           )}
@@ -1625,10 +1678,32 @@ export default function App() {
           {/* Mobile search */}
           {isMobile && (
             <div style={{ position: "relative", marginBottom: 12 }}>
-              <Search size={13} style={{ position: "absolute", left: 10, top: 10, color: MUTED }} />
+              <Search size={16} style={{ position: "absolute", left: 12, top: 14, color: MUTED }} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pretraga..."
-                style={{ width: "100%", border: `1px solid ${RULE}`, borderRadius: 6, padding: "9px 10px 9px 30px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
+                style={{ width: "100%", border: `1px solid ${RULE}`, borderRadius: 8, padding: "12px 12px 12px 36px", fontSize: 14, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", boxSizing: "border-box", minHeight: 44 }}
               />
+            </div>
+          )}
+
+          {/* Page title */}
+          {isMobile && (
+            <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "0.02em", color: INK }}>
+                  {navItems.find((n) => n.id === page)?.label || "Pipeline"}
+                </h1>
+                <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                  {filteredProjects.length} projekata {yearFilter !== "all" ? `· ${yearFilter}` : "· sve godine"}
+                </div>
+              </div>
+              <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} style={{
+                border: `1px solid ${RULE}`, borderRadius: 8, padding: "8px 10px",
+                fontSize: 14, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif",
+                minHeight: 44,
+              }}>
+                <option value="all">Sve</option>
+                {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
           )}
 
@@ -1659,12 +1734,12 @@ export default function App() {
 
           {/* ─── DASHBOARD VIEW ─── */}
           {page === "dashboard" && isAdmin && (
-            <DashboardView projects={projects} yearFilter={yearFilter} />
+            <DashboardView projects={projects} yearFilter={yearFilter} isMobile={isMobile} />
           )}
 
           {/* ─── CHECKLIST VIEW ─── */}
           {page === "checklist" && (
-            <ChecklistView projects={filteredProjects} isAdmin={isAdmin} setSelectedId={setSelectedId} onOpenPanel={(id) => setPanelProjectId(id)} />
+            <ChecklistView projects={filteredProjects} isAdmin={isAdmin} setSelectedId={setSelectedId} onOpenPanel={(id) => setPanelProjectId(id)} isMobile={isMobile} />
           )}
 
           {/* ─── OFFERS VIEW ─── */}
@@ -1688,20 +1763,29 @@ export default function App() {
         <nav style={{
           position: "fixed", bottom: 0, left: 0, right: 0, background: PAPER,
           borderTop: `1px solid ${RULE}`, display: "flex", justifyContent: "space-around",
-          padding: "6px 0 env(safe-area-inset-bottom, 8px)", zIndex: 500,
+          padding: "4px 0 env(safe-area-inset-bottom, 6px)", zIndex: 500,
         }}>
-          {navItems.map((n) => {
+          {[
+            { id: "pipeline", label: "Pipeline", icon: LayoutGrid },
+            { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+            { id: "checklist", label: "Checklista", icon: Table },
+            { id: "newproject", label: "Novi predmet", icon: Plus },
+          ].map((n) => {
             const Icon = n.icon;
-            const active = page === n.id;
+            const active = n.id === "newproject" ? false : page === n.id;
             return (
-              <button key={n.id} onClick={() => setPage(n.id)} style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                background: "none", border: "none", cursor: "pointer", padding: "4px 8px",
-                color: active ? MOSS : MUTED, fontFamily: "'Inter', sans-serif",
+              <button key={n.id} onClick={() => {
+                if (n.id === "newproject") { setShowNewForm(true); }
+                else { setPage(n.id); }
+              }} style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                background: "none", border: "none", cursor: "pointer",
+                padding: "6px 8px", minHeight: 44, minWidth: 56,
+                color: active ? MOSS : n.id === "newproject" ? MOSS : MUTED, fontFamily: "'Inter', sans-serif",
                 transition: "color 0.12s",
               }}>
-                <Icon size={18} />
-                <span style={{ fontSize: 9, fontWeight: active ? 700 : 500 }}>{n.label}</span>
+                <Icon size={20} />
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>{n.label}</span>
               </button>
             );
           })}
