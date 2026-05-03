@@ -1,6 +1,6 @@
 {
   "name": "evidencija-konzervatorskih-predmeta",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "private": true,
   "main": "main.js",
   "description": "Desktop aplikacija za evidenciju konzervatorskih predmeta, ponuda i projektne dokumentacije.",
