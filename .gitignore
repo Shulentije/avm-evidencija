@@ -6,3 +6,4 @@ out
 .env
 .vercel
 *.log
+.env.local
