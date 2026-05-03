@@ -1646,6 +1646,11 @@ export default function App() {
             {/* Bottom actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4, borderTop: `1px solid ${RULE}`, paddingTop: 8 }}>
               {isAdmin && <Btn onClick={() => setShowNewForm(true)} style={{ justifyContent: "flex-start", fontSize: 11 }}><Plus size={13} /> Novi predmet</Btn>}
+              {isAdmin && selectedId && (
+                <Btn danger onClick={() => deleteProject(selectedId)} style={{ justifyContent: "flex-start", fontSize: 11 }}>
+                  <Trash2 size={13} /> Obriši projekat
+                </Btn>
+              )}
               <Btn onClick={saveNow} style={{ justifyContent: "flex-start", fontSize: 11 }}><Save size={13} /> Sačuvaj</Btn>
               {isAdmin && <Btn onClick={exportChecklistCsv} style={{ justifyContent: "flex-start", fontSize: 11 }}><Download size={13} /> CSV export</Btn>}
               {isAdmin && (
