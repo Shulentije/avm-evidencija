@@ -46,8 +46,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "OWNER",
-        "repo": "REPO"
+        "owner": "Shulentije",
+        "repo": "avm-evidencija"
       }
     ],
     "win": {
