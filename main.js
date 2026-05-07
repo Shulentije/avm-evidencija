@@ -102,12 +102,10 @@ ipcMain.handle("desktop:create-project-folder", async (_event, folderPath) => {
     fs.mkdirSync(folderPath, { recursive: true });
 
     const subfolders = [
-      "01_Ponude",
-      "02_Dokumentacija",
-      "03_Projekat",
-      "04_UZKD",
-      "05_Fotografije",
-      "06_Izlazni_PDF",
+      "01_Dokumentacija",
+      "02_Projekat",
+      "03_Fotografije",
+      "04_Izlazni_PDF",
     ];
 
     subfolders.forEach((folderName) => {
@@ -151,10 +149,10 @@ ipcMain.handle("desktop:save-pdf", async (_event, payload) => {
       throw new Error("Nedostaju podaci za snimanje PDF-a.");
     }
 
-    const pdfFolder = path.join(folderPath, "06_Izlazni_PDF");
-    fs.mkdirSync(pdfFolder, { recursive: true });
+    // folderPath is now the yearly Ponude folder (e.g. C:/AVM/Projekti/2026/Ponude)
+    fs.mkdirSync(folderPath, { recursive: true });
 
-    const outputPath = path.join(pdfFolder, fileName);
+    const outputPath = path.join(folderPath, fileName);
     fs.writeFileSync(outputPath, Buffer.from(bytes));
 
     return { ok: true, outputPath };

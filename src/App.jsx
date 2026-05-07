@@ -7,6 +7,7 @@ import {
   ShieldCheck, User, MapPin, Trash2, ExternalLink, Pencil, Save,
   LayoutGrid, BarChart3, Table, ChevronRight, X, Download,
   LogOut, Search, Calendar, Users, Activity, Clock, Check,
+  CheckSquare, Square, ListTodo,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════
@@ -17,6 +18,7 @@ const ACTIVE_YEAR = new Date().getFullYear();
 const LEGACY_STORAGE_KEY = `${STORAGE_BASE_KEY}-${ACTIVE_YEAR}`;
 const STORAGE_KEY = `${STORAGE_BASE_KEY}-all-years`;
 const SETTINGS_KEY = `${STORAGE_BASE_KEY}-settings`;
+const TASKS_KEY = `${STORAGE_BASE_KEY}-tasks`;
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -44,8 +46,8 @@ const DANGER_BORDER = "#e8c4c4";
 const PIPELINE_STAGES = [
   "Ponuda",
   "Analiza lokacije",
-  "Elaborat VU",
-  "KP Idejno",
+  "Elaborat vizuelnog uticaja",
+  "Konzervatorska analiza",
   "Čeka UZKD",
   "KP Glavni",
   "Završeno",
@@ -53,6 +55,8 @@ const PIPELINE_STAGES = [
 
 const STAGE_MAP_FROM_OLD = {
   "Pokrenuto": "Ponuda",
+  "Elaborat VU": "Elaborat vizuelnog uticaja",
+  "KP Idejno": "Konzervatorska analiza",
   "Konzervatorska analiza": "Analiza lokacije",
   "Konzervatorski projekat": "KP Glavni",
   "Predato": "Završeno",
@@ -71,15 +75,768 @@ const OLD_DEFAULT_OFFER_TEXTS = [
 ];
 
 /* ═══════════════════════════════════════════
+   RADNICI
+   ═══════════════════════════════════════════ */
+const RADNICI = [
+  "Andrija Vuksanović",
+  "Radnik 2",
+  "Radnik 3",
+  "Radnik 4",
+];
+
+/* ═══════════════════════════════════════════
+   OPŠTINE CRNE GORE - Tablice za vozila
+   ═══════════════════════════════════════════ */
+const OPSTINE_CODES = [
+  { name: "Podgorica",     code: "PG" },
+  { name: "Nikšić",        code: "NK" },
+  { name: "Bar",           code: "BR" },
+  { name: "Budva",         code: "BD" },
+  { name: "Kotor",         code: "KO" },
+  { name: "Herceg Novi",   code: "HN" },
+  { name: "Cetinje",       code: "CT" },
+  { name: "Bijelo Polje",  code: "BP" },
+  { name: "Pljevlja",      code: "PV" },
+  { name: "Berane",        code: "BA" },
+  { name: "Ulcinj",        code: "UL" },
+  { name: "Tivat",         code: "TV" },
+  { name: "Danilovgrad",   code: "DG" },
+  { name: "Rožaje",        code: "RO" },
+  { name: "Kolašin",       code: "KL" },
+  { name: "Mojkovac",      code: "MK" },
+  { name: "Plav",          code: "PL" },
+  { name: "Žabljak",       code: "ŽB" },
+  { name: "Šavnik",        code: "ŠA" },
+  { name: "Andrijevica",   code: "AN" },
+  { name: "Plužine",       code: "PŽ" },
+  { name: "Gusinje",       code: "GU" },
+  { name: "Tuzi",          code: "TZ" },
+  { name: "Zeta",          code: "ZT" },
+  { name: "Petnjica",      code: "PT" },
+];
+
+/* ═══════════════════════════════════════════
+   KATASTARSKE OPŠTINE CRNE GORE
+   Dvoslovne skraćenice; troslovna ako poklapanje
+   ═══════════════════════════════════════════ */
+const KATASTARSKE_OPSTINE = {
+  "Podgorica": [
+    { name: "Podgorica I", code: "P1" },
+    { name: "Podgorica II", code: "P2" },
+    { name: "Podgorica III", code: "P3" },
+    { name: "Golubovci", code: "GL" },
+    { name: "Dajbabe", code: "DA" },
+    { name: "Donja Gorica", code: "DG" },
+    { name: "Gornja Gorica", code: "GG" },
+    { name: "Zagorič", code: "ZA" },
+    { name: "Tološi", code: "TL" },
+    { name: "Rogami", code: "RG" },
+    { name: "Farmaci", code: "FA" },
+    { name: "Barutana", code: "BT" },
+    { name: "Konik", code: "KN" },
+    { name: "Vranj", code: "VR" },
+    { name: "Drač", code: "DR" },
+    { name: "Mahala", code: "MH" },
+    { name: "Botun", code: "BO" },
+    { name: "Lješkopolje", code: "LJ" },
+    { name: "Mataguži", code: "MT" },
+    { name: "Momišići", code: "MM" },
+    { name: "Dolovi", code: "DL" },
+    { name: "Cijevna", code: "CI" },
+    { name: "Bistrice", code: "BI" },
+    { name: "Srpska", code: "SR" },
+    { name: "Medun", code: "ME" },
+    { name: "Ubli", code: "UB" },
+    { name: "Bijelo Polje", code: "BP" },
+    { name: "Beri", code: "BE" },
+    { name: "Ponari", code: "PN" },
+    { name: "Vukovci", code: "VU" },
+    { name: "Gostilj", code: "GO" },
+    { name: "Kakaricka Gora", code: "KG" },
+    { name: "Ljajkovići", code: "LK" },
+    { name: "Buronji", code: "BU" },
+    { name: "Mrke", code: "MR" },
+    { name: "Smokovac", code: "SM" },
+    { name: "Kurilo", code: "KU" },
+    { name: "Balabani", code: "BL" },
+    { name: "Dinoša", code: "DN" },
+    { name: "Kučke Korita", code: "KK" },
+    { name: "Lješta", code: "LS" },
+    { name: "Sijovac", code: "SJ" },
+    { name: "Pelev Brijeg", code: "PB" },
+    { name: "Liješnje", code: "LI" },
+    { name: "Raći", code: "RA" },
+    { name: "Milješ", code: "MI" },
+    { name: "Dubrava", code: "DB" },
+    { name: "Šušunja", code: "SU" },
+    { name: "Orahovo", code: "OR" },
+    { name: "Gornje Selo", code: "GS" },
+    { name: "Donje Selo", code: "DS" },
+  ],
+  "Nikšić": [
+    { name: "Nikšić", code: "NK" },
+    { name: "Kličevo", code: "KL" },
+    { name: "Župa", code: "ZU" },
+    { name: "Brezovik", code: "BZ" },
+    { name: "Vidrovan", code: "VD" },
+    { name: "Vir", code: "VI" },
+    { name: "Grahovo", code: "GR" },
+    { name: "Velimlje", code: "VL" },
+    { name: "Dragovoljići", code: "DV" },
+    { name: "Jasen", code: "JA" },
+    { name: "Kuta", code: "KT" },
+    { name: "Lukovo", code: "LU" },
+    { name: "Oštrog", code: "OS" },
+    { name: "Gornje Polje", code: "GP" },
+    { name: "Donje Polje", code: "DP" },
+    { name: "Stubica", code: "ST" },
+    { name: "Trubjela", code: "TR" },
+    { name: "Vilusi", code: "VS" },
+    { name: "Ozrinići", code: "OZ" },
+    { name: "Rudine", code: "RU" },
+    { name: "Golija", code: "GO" },
+    { name: "Koprivice", code: "KP" },
+    { name: "Povija", code: "PV" },
+    { name: "Broćanac", code: "BR" },
+    { name: "Trebjesa", code: "TB" },
+    { name: "Zaslap", code: "ZS" },
+    { name: "Nudo", code: "NU" },
+    { name: "Duga", code: "DU" },
+    { name: "Miolje Polje", code: "MP" },
+    { name: "Okolišta", code: "OK" },
+    { name: "Rastovac", code: "RA" },
+    { name: "Straševina", code: "SV" },
+    { name: "Riječani", code: "RI" },
+    { name: "Bogetići", code: "BG" },
+  ],
+  "Bar": [
+    { name: "Bar", code: "BA" },
+    { name: "Stari Bar", code: "SB" },
+    { name: "Sutomore", code: "SU" },
+    { name: "Šušanj", code: "SS" },
+    { name: "Čanj", code: "CA" },
+    { name: "Dobre Vode", code: "DV" },
+    { name: "Virpazar", code: "VP" },
+    { name: "Polje", code: "PO" },
+    { name: "Zaljevo", code: "ZL" },
+    { name: "Ostros", code: "OS" },
+    { name: "Mrkojevići", code: "MR" },
+    { name: "Pecurice", code: "PE" },
+    { name: "Tuđemili", code: "TU" },
+    { name: "Crmnica", code: "CR" },
+    { name: "Boljevići", code: "BO" },
+    { name: "Limljani", code: "LI" },
+    { name: "Sozina", code: "SO" },
+    { name: "Dabezići", code: "DB" },
+    { name: "Komansko Selo", code: "KS" },
+    { name: "Burtaiši", code: "BU" },
+    { name: "Tomba", code: "TO" },
+    { name: "Kunje", code: "KU" },
+    { name: "Pečurice", code: "PC" },
+    { name: "Seoca", code: "SE" },
+    { name: "Godinje", code: "GD" },
+    { name: "Gleđica", code: "GL" },
+    { name: "Gornja Brca", code: "GB" },
+    { name: "Donja Brca", code: "DBC" },
+  ],
+  "Budva": [
+    { name: "Budva", code: "BD" },
+    { name: "Bečići", code: "BC" },
+    { name: "Petrovac", code: "PT" },
+    { name: "Sveti Stefan", code: "SS" },
+    { name: "Reževići", code: "RZ" },
+    { name: "Pobori", code: "PB" },
+    { name: "Prijevor", code: "PR" },
+    { name: "Buljarica", code: "BU" },
+    { name: "Pržno", code: "PZ" },
+    { name: "Krimovica", code: "KR" },
+    { name: "Lapčići", code: "LA" },
+    { name: "Kuljače", code: "KU" },
+    { name: "Markovići", code: "MK" },
+    { name: "Podostrog", code: "PD" },
+    { name: "Stanišići", code: "ST" },
+    { name: "Dubovica", code: "DB" },
+    { name: "Podbabac", code: "PBB" },
+    { name: "Režine", code: "RE" },
+    { name: "Brajići", code: "BJ" },
+    { name: "Miločer", code: "MI" },
+  ],
+  "Kotor": [
+    { name: "Kotor I", code: "K1" },
+    { name: "Kotor II", code: "K2" },
+    { name: "Risan", code: "RI" },
+    { name: "Perast", code: "PE" },
+    { name: "Dobrota", code: "DO" },
+    { name: "Orahovac", code: "OR" },
+    { name: "Prčanj", code: "PR" },
+    { name: "Stoliv", code: "ST" },
+    { name: "Muo", code: "MU" },
+    { name: "Škaljari", code: "SK" },
+    { name: "Kavač", code: "KA" },
+    { name: "Grbalj", code: "GR" },
+    { name: "Bigova", code: "BI" },
+    { name: "Krivošije", code: "KV" },
+    { name: "Ledenice", code: "LE" },
+    { name: "Morinj", code: "MO" },
+    { name: "Lastva Grbaljska", code: "LG" },
+    { name: "Vranovići", code: "VN" },
+    { name: "Dub", code: "DU" },
+    { name: "Mirac", code: "MI" },
+    { name: "Bogdašići", code: "BG" },
+    { name: "Gornji Stoliv", code: "GST" },
+    { name: "Strp", code: "SP" },
+    { name: "Lipci", code: "LI" },
+    { name: "Prcanj II", code: "P2" },
+    { name: "Kostanjica", code: "KS" },
+    { name: "Ljuta", code: "LJ" },
+    { name: "Radimno", code: "RA" },
+    { name: "Šišići", code: "SI" },
+    { name: "Sutvara", code: "SV" },
+    { name: "Zalazi", code: "ZA" },
+    { name: "Zlatne Njive", code: "ZN" },
+    { name: "Kubasi", code: "KB" },
+    { name: "Prijeradi", code: "PJ" },
+  ],
+  "Herceg Novi": [
+    { name: "Herceg Novi", code: "HN" },
+    { name: "Igalo", code: "IG" },
+    { name: "Bijela", code: "BI" },
+    { name: "Baošići", code: "BS" },
+    { name: "Kamenari", code: "KM" },
+    { name: "Đenovići", code: "DJ" },
+    { name: "Meljine", code: "ML" },
+    { name: "Savina", code: "SA" },
+    { name: "Topla", code: "TO" },
+    { name: "Podi", code: "PD" },
+    { name: "Sušćepan", code: "SU" },
+    { name: "Kruševice", code: "KR" },
+    { name: "Zelenika", code: "ZE" },
+    { name: "Njivice", code: "NJ" },
+    { name: "Mokrine", code: "MK" },
+    { name: "Trebesinj", code: "TR" },
+    { name: "Žvinje", code: "ZV" },
+    { name: "Jošica", code: "JO" },
+    { name: "Kameno", code: "KA" },
+    { name: "Ratiševina", code: "RA" },
+    { name: "Kutsko Polje", code: "KP" },
+    { name: "Sasovići", code: "SS" },
+    { name: "Svrčuge", code: "SG" },
+    { name: "Mojdež", code: "MO" },
+    { name: "Ubla", code: "UB" },
+    { name: "Žlijebi", code: "ZL" },
+  ],
+  "Cetinje": [
+    { name: "Cetinje", code: "CE" },
+    { name: "Njeguši", code: "NJ" },
+    { name: "Bajice", code: "BJ" },
+    { name: "Dobrsko Selo", code: "DS" },
+    { name: "Čevo", code: "CV" },
+    { name: "Bjelice", code: "BL" },
+    { name: "Cuce", code: "CU" },
+    { name: "Ćeklići", code: "CK" },
+    { name: "Zaćir", code: "ZC" },
+    { name: "Dubovo", code: "DB" },
+    { name: "Gornji Ceklin", code: "GC" },
+    { name: "Donji Ceklin", code: "DC" },
+    { name: "Dragomi Do", code: "DD" },
+    { name: "Erakovići", code: "ER" },
+    { name: "Građani", code: "GR" },
+    { name: "Jankovići", code: "JA" },
+    { name: "Kosijeri", code: "KO" },
+    { name: "Lipa", code: "LI" },
+    { name: "Oćevići", code: "OC" },
+    { name: "Ozrinići", code: "OZ" },
+    { name: "Pačarađe", code: "PA" },
+    { name: "Pejovići", code: "PE" },
+    { name: "Prentin Do", code: "PD" },
+    { name: "Riječani", code: "RI" },
+    { name: "Trnjine", code: "TN" },
+    { name: "Uba", code: "UB" },
+    { name: "Ugnje", code: "UG" },
+    { name: "Velestovo", code: "VE" },
+    { name: "Vrba", code: "VB" },
+    { name: "Zagrablje", code: "ZG" },
+    { name: "Žanjev Do", code: "ZD" },
+  ],
+  "Bijelo Polje": [
+    { name: "Bijelo Polje", code: "BP" },
+    { name: "Lješnica", code: "LJ" },
+    { name: "Tomaševo", code: "TO" },
+    { name: "Pavino Polje", code: "PP" },
+    { name: "Zaton", code: "ZT" },
+    { name: "Sutivan", code: "SU" },
+    { name: "Lipnica", code: "LI" },
+    { name: "Lozna", code: "LO" },
+    { name: "Radojeva", code: "RD" },
+    { name: "Rasovo", code: "RS" },
+    { name: "Ravna Rijeka", code: "RR" },
+    { name: "Ribarevine", code: "RB" },
+    { name: "Cerovo", code: "CR" },
+    { name: "Čokrlije", code: "CK" },
+    { name: "Godijevo", code: "GD" },
+    { name: "Gubavač", code: "GB" },
+    { name: "Korita", code: "KR" },
+    { name: "Kovren", code: "KV" },
+    { name: "Kanje", code: "KA" },
+    { name: "Majstorovina", code: "MA" },
+    { name: "Milovo", code: "MI" },
+    { name: "Mojstir", code: "MO" },
+    { name: "Mioče", code: "MC" },
+    { name: "Nedakusi", code: "ND" },
+    { name: "Nikoljac", code: "NI" },
+    { name: "Požeginja", code: "PZ" },
+    { name: "Sušica", code: "SS" },
+    { name: "Sipanje", code: "SP" },
+    { name: "Stubo", code: "ST" },
+    { name: "Vraneš", code: "VR" },
+    { name: "Zatona", code: "ZA" },
+    { name: "Bliškovo", code: "BL" },
+    { name: "Babića Brijeg", code: "BB" },
+    { name: "Laholo", code: "LA" },
+  ],
+  "Pljevlja": [
+    { name: "Pljevlja", code: "PL" },
+    { name: "Gradac", code: "GR" },
+    { name: "Hoćevina", code: "HO" },
+    { name: "Brezna", code: "BZ" },
+    { name: "Đurđevića Tara", code: "DT" },
+    { name: "Kovač", code: "KV" },
+    { name: "Boljanić", code: "BL" },
+    { name: "Bobovo", code: "BB" },
+    { name: "Boščinovići", code: "BO" },
+    { name: "Crljenice", code: "CR" },
+    { name: "Glibaći", code: "GL" },
+    { name: "Gotovuša", code: "GO" },
+    { name: "Ilino Brdo", code: "IB" },
+    { name: "Jagodnje", code: "JA" },
+    { name: "Kalušići", code: "KA" },
+    { name: "Kosanica", code: "KS" },
+    { name: "Kozica", code: "KO" },
+    { name: "Lever Tara", code: "LT" },
+    { name: "Maoče", code: "MA" },
+    { name: "Mataruge", code: "MT" },
+    { name: "Obarde", code: "OB" },
+    { name: "Odžak", code: "OD" },
+    { name: "Premćani", code: "PR" },
+    { name: "Rabitlje", code: "RA" },
+    { name: "Šljivansko", code: "SL" },
+    { name: "Trnovice", code: "TR" },
+    { name: "Zabrđe", code: "ZB" },
+    { name: "Vrulja", code: "VR" },
+    { name: "Vidre", code: "VD" },
+    { name: "Warrino", code: "VA" },
+  ],
+  "Berane": [
+    { name: "Berane", code: "BE" },
+    { name: "Donje Luge", code: "DL" },
+    { name: "Gornje Luge", code: "GL" },
+    { name: "Budimlja", code: "BU" },
+    { name: "Dolac", code: "DO" },
+    { name: "Buče", code: "BC" },
+    { name: "Dapsiće", code: "DA" },
+    { name: "Goražde", code: "GR" },
+    { name: "Haremi", code: "HR" },
+    { name: "Lužac", code: "LU" },
+    { name: "Mašte", code: "MS" },
+    { name: "Petnjik", code: "PT" },
+    { name: "Polica", code: "PO" },
+    { name: "Praćevac", code: "PR" },
+    { name: "Rovca", code: "RV" },
+    { name: "Štitari", code: "ST" },
+    { name: "Vinicka", code: "VI" },
+    { name: "Zagorje", code: "ZG" },
+    { name: "Lubnice", code: "LB" },
+    { name: "Pešca", code: "PE" },
+    { name: "Kalica", code: "KA" },
+    { name: "Mokra", code: "MK" },
+  ],
+  "Ulcinj": [
+    { name: "Ulcinj", code: "UL" },
+    { name: "Donji Štoj", code: "DS" },
+    { name: "Gornji Štoj", code: "GS" },
+    { name: "Vladimir", code: "VL" },
+    { name: "Kruče", code: "KR" },
+    { name: "Zoganje", code: "ZO" },
+    { name: "Štodra", code: "ST" },
+    { name: "Brajša", code: "BR" },
+    { name: "Pistula", code: "PI" },
+    { name: "Mide", code: "MI" },
+    { name: "Salč", code: "SA" },
+    { name: "Pinješ", code: "PN" },
+    { name: "Sutjel", code: "SJ" },
+    { name: "Kodra", code: "KD" },
+    { name: "Ambula", code: "AM" },
+    { name: "Čurke", code: "CU" },
+    { name: "Darza", code: "DA" },
+    { name: "Kaliman", code: "KM" },
+    { name: "Kolomza", code: "KO" },
+    { name: "Mala Gorana", code: "MG" },
+    { name: "Velika Gorana", code: "VG" },
+    { name: "Možura", code: "MO" },
+    { name: "Bijela Gora", code: "BG" },
+    { name: "Ćurke", code: "CR" },
+    { name: "Rastiš", code: "RS" },
+  ],
+  "Tivat": [
+    { name: "Tivat", code: "TV" },
+    { name: "Donja Lastva", code: "DL" },
+    { name: "Gornja Lastva", code: "GL" },
+    { name: "Krtoli", code: "KR" },
+    { name: "Lepetane", code: "LE" },
+    { name: "Đuraševići", code: "DJ" },
+    { name: "Krašići", code: "KS" },
+    { name: "Bogišići", code: "BO" },
+    { name: "Mrčevac", code: "MR" },
+    { name: "Milovići", code: "MI" },
+    { name: "Nikovići", code: "NI" },
+    { name: "Radovići", code: "RA" },
+    { name: "Gradiošnica", code: "GN" },
+    { name: "Kavanjin", code: "KA" },
+    { name: "Seljanovo", code: "SE" },
+    { name: "Dumidran", code: "DM" },
+    { name: "Gošići", code: "GO" },
+    { name: "Ruljina", code: "RU" },
+  ],
+  "Danilovgrad": [
+    { name: "Danilovgrad", code: "DG" },
+    { name: "Spuž", code: "SP" },
+    { name: "Bjeloši", code: "BJ" },
+    { name: "Bogetići", code: "BG" },
+    { name: "Ćurilac", code: "CU" },
+    { name: "Dolovi", code: "DL" },
+    { name: "Frutak", code: "FR" },
+    { name: "Gorica", code: "GO" },
+    { name: "Gruda", code: "GR" },
+    { name: "Jastreb", code: "JA" },
+    { name: "Jelenak", code: "JE" },
+    { name: "Kopito", code: "KP" },
+    { name: "Kosić", code: "KS" },
+    { name: "Kujava", code: "KU" },
+    { name: "Lazine", code: "LA" },
+    { name: "Martinići", code: "MR" },
+    { name: "Novo Selo", code: "NS" },
+    { name: "Orja Luka", code: "OL" },
+    { name: "Petrovići", code: "PE" },
+    { name: "Pješivci", code: "PJ" },
+    { name: "Podstenje", code: "PO" },
+    { name: "Slatina", code: "SL" },
+    { name: "Tunjevo", code: "TU" },
+    { name: "Viš", code: "VI" },
+    { name: "Zagarač", code: "ZG" },
+    { name: "Bandići", code: "BA" },
+    { name: "Vučica", code: "VU" },
+    { name: "Ždrebaonik", code: "ZD" },
+  ],
+  "Rožaje": [
+    { name: "Rožaje", code: "RO" },
+    { name: "Bandžov", code: "BN" },
+    { name: "Bać", code: "BA" },
+    { name: "Biševo", code: "BI" },
+    { name: "Besnik", code: "BS" },
+    { name: "Bogajće", code: "BG" },
+    { name: "Crnča", code: "CR" },
+    { name: "Čokrlije", code: "CK" },
+    { name: "Dračenovac", code: "DR" },
+    { name: "Grižice", code: "GR" },
+    { name: "Honsi", code: "HO" },
+    { name: "Ibarac", code: "IB" },
+    { name: "Jablanica", code: "JA" },
+    { name: "Kalače", code: "KA" },
+    { name: "Klanac", code: "KL" },
+    { name: "Lovnička", code: "LO" },
+    { name: "Paučina", code: "PA" },
+    { name: "Plunce", code: "PL" },
+    { name: "Seošnica", code: "SE" },
+    { name: "Škrijelj", code: "SK" },
+    { name: "Vuča", code: "VU" },
+    { name: "Bać", code: "BC" },
+    { name: "Đuranovića Luke", code: "DL" },
+  ],
+  "Kolašin": [
+    { name: "Kolašin", code: "KO" },
+    { name: "Bakovići", code: "BA" },
+    { name: "Bare Kraljske", code: "BK" },
+    { name: "Drijenak", code: "DR" },
+    { name: "Dulovine", code: "DU" },
+    { name: "Gornje Lipovo", code: "GL" },
+    { name: "Donje Lipovo", code: "DL" },
+    { name: "Jasenova", code: "JA" },
+    { name: "Mateševo", code: "MT" },
+    { name: "Mioska", code: "MI" },
+    { name: "Morača", code: "MO" },
+    { name: "Osreci", code: "OS" },
+    { name: "Padež", code: "PA" },
+    { name: "Plana", code: "PL" },
+    { name: "Požnja", code: "PO" },
+    { name: "Redice", code: "RE" },
+    { name: "Sjerogošte", code: "SJ" },
+    { name: "Smailagića Polje", code: "SP" },
+    { name: "Trmanje", code: "TR" },
+    { name: "Trebaljevo", code: "TB" },
+    { name: "Uljara", code: "UL" },
+    { name: "Vladoš", code: "VL" },
+    { name: "Liješnje", code: "LI" },
+    { name: "Manastir Morača", code: "MM" },
+    { name: "Crkvine", code: "CR" },
+  ],
+  "Mojkovac": [
+    { name: "Mojkovac", code: "MK" },
+    { name: "Bistrica", code: "BI" },
+    { name: "Dobrilovina", code: "DO" },
+    { name: "Gojakovići", code: "GJ" },
+    { name: "Gornja Polja", code: "GP" },
+    { name: "Krstac", code: "KR" },
+    { name: "Lepenac", code: "LE" },
+    { name: "Podbišće", code: "PB" },
+    { name: "Prošćenje", code: "PR" },
+    { name: "Štitarica", code: "ST" },
+    { name: "Slatina", code: "SL" },
+    { name: "Tutići", code: "TU" },
+    { name: "Crvena Lokva", code: "CL" },
+    { name: "Bjelojevići", code: "BJ" },
+    { name: "Jakovići", code: "JK" },
+  ],
+  "Plav": [
+    { name: "Plav", code: "PL" },
+    { name: "Brezojevice", code: "BZ" },
+    { name: "Bogajće", code: "BG" },
+    { name: "Hoti", code: "HO" },
+    { name: "Komarača", code: "KM" },
+    { name: "Kruševo", code: "KR" },
+    { name: "Meteh", code: "ME" },
+    { name: "Murina", code: "MU" },
+    { name: "Nokšiće", code: "NO" },
+    { name: "Pepić", code: "PE" },
+    { name: "Prnjavor", code: "PR" },
+    { name: "Skić", code: "SK" },
+    { name: "Velika", code: "VE" },
+    { name: "Vusanje", code: "VU" },
+    { name: "Gornja Ržanica", code: "GR" },
+    { name: "Donja Ržanica", code: "DR" },
+    { name: "Jara", code: "JA" },
+    { name: "Martinoviće", code: "MR" },
+  ],
+  "Žabljak": [
+    { name: "Žabljak", code: "ZB" },
+    { name: "Borje", code: "BO" },
+    { name: "Bukovica", code: "BU" },
+    { name: "Vrela", code: "VR" },
+    { name: "Kovačka Dolina", code: "KD" },
+    { name: "Mala Crna Gora", code: "MCG" },
+    { name: "Tepca", code: "TE" },
+    { name: "Virak", code: "VI" },
+    { name: "Motički Gaj", code: "MG" },
+    { name: "Javorje", code: "JA" },
+    { name: "Pirlitor", code: "PI" },
+    { name: "Boljane", code: "BL" },
+    { name: "Nadgora", code: "NG" },
+    { name: "Novakovići", code: "NK" },
+    { name: "Šumanovac", code: "SM" },
+    { name: "Tušinja", code: "TU" },
+    { name: "Palež", code: "PZ" },
+  ],
+  "Šavnik": [
+    { name: "Šavnik", code: "SV" },
+    { name: "Boan", code: "BO" },
+    { name: "Bukovica", code: "BU" },
+    { name: "Dubrovsko", code: "DB" },
+    { name: "Komarnica", code: "KO" },
+    { name: "Krnja Jela", code: "KJ" },
+    { name: "Mljetičak", code: "ML" },
+    { name: "Petnja", code: "PE" },
+    { name: "Pošćenje", code: "PO" },
+    { name: "Previš", code: "PR" },
+    { name: "Tušina", code: "TU" },
+    { name: "Bijela", code: "BI" },
+    { name: "Gradina", code: "GR" },
+  ],
+  "Andrijevica": [
+    { name: "Andrijevica", code: "AN" },
+    { name: "Andželati", code: "AZ" },
+    { name: "Bojovići", code: "BJ" },
+    { name: "Cecuni", code: "CC" },
+    { name: "Đuliće", code: "DU" },
+    { name: "Gnjili Potok", code: "GP" },
+    { name: "Gornje Luge", code: "GL" },
+    { name: "Jošanica", code: "JO" },
+    { name: "Konjuhe", code: "KO" },
+    { name: "Kralje", code: "KR" },
+    { name: "Kutske Korita", code: "KK" },
+    { name: "Prisoja", code: "PR" },
+    { name: "Seoce", code: "SE" },
+    { name: "Trepča", code: "TP" },
+    { name: "Zabrđe", code: "ZB" },
+    { name: "Trešnjevik", code: "TR" },
+    { name: "Rijeka Marsenića", code: "RM" },
+  ],
+  "Plužine": [
+    { name: "Plužine", code: "PL" },
+    { name: "Bezuje", code: "BZ" },
+    { name: "Boričje", code: "BR" },
+    { name: "Brljevo", code: "BL" },
+    { name: "Crkvičko Polje", code: "CP" },
+    { name: "Goransko", code: "GR" },
+    { name: "Jezerine", code: "JE" },
+    { name: "Mratinje", code: "MR" },
+    { name: "Nedajno", code: "NE" },
+    { name: "Rudinice", code: "RU" },
+    { name: "Seljani", code: "SE" },
+    { name: "Smriječno", code: "SM" },
+    { name: "Stabna", code: "ST" },
+    { name: "Unač", code: "UN" },
+    { name: "Zabrđe", code: "ZB" },
+    { name: "Stolac", code: "SO" },
+    { name: "Šćepan Polje", code: "SP" },
+  ],
+  "Gusinje": [
+    { name: "Gusinje", code: "GU" },
+    { name: "Dosuđe", code: "DO" },
+    { name: "Grnčar", code: "GR" },
+    { name: "Kruševo", code: "KR" },
+    { name: "Martinović", code: "MR" },
+    { name: "Vusanje", code: "VU" },
+    { name: "Višnjevo", code: "VI" },
+    { name: "Dolja", code: "DL" },
+  ],
+  "Tuzi": [
+    { name: "Tuzi", code: "TU" },
+    { name: "Vranj", code: "VR" },
+    { name: "Dinošo", code: "DN" },
+    { name: "Sukuruć", code: "SU" },
+    { name: "Kornet", code: "KO" },
+    { name: "Hoti", code: "HO" },
+    { name: "Milješ", code: "MI" },
+    { name: "Vladne", code: "VL" },
+    { name: "Dečić", code: "DE" },
+    { name: "Skok", code: "SK" },
+    { name: "Krnjice", code: "KR" },
+    { name: "Vuksanlekići", code: "VK" },
+    { name: "Arza", code: "AR" },
+    { name: "Traboin", code: "TR" },
+    { name: "Zatrijebač", code: "ZT" },
+  ],
+  "Zeta": [
+    { name: "Golubovci", code: "GL" },
+    { name: "Balabani", code: "BL" },
+    { name: "Berislavci", code: "BE" },
+    { name: "Goljemadi", code: "GM" },
+    { name: "Goričani", code: "GC" },
+    { name: "Klopot", code: "KL" },
+    { name: "Kurilo", code: "KU" },
+    { name: "Mataguži", code: "MT" },
+    { name: "Mojanovići", code: "MO" },
+    { name: "Ponari", code: "PN" },
+    { name: "Srpska", code: "SR" },
+    { name: "Vukovci", code: "VU" },
+    { name: "Gostilj", code: "GO" },
+    { name: "Mahala", code: "MH" },
+    { name: "Dajbabe", code: "DA" },
+    { name: "Šušunja", code: "SU" },
+    { name: "Bistrice", code: "BI" },
+    { name: "Lješkopolje", code: "LJ" },
+  ],
+  "Petnjica": [
+    { name: "Petnjica", code: "PE" },
+    { name: "Azane", code: "AZ" },
+    { name: "Bor", code: "BR" },
+    { name: "Dašča Rijeka", code: "DR" },
+    { name: "Godočelje", code: "GO" },
+    { name: "Javorova", code: "JA" },
+    { name: "Kalica", code: "KA" },
+    { name: "Lagator", code: "LA" },
+    { name: "Lješnica", code: "LJ" },
+    { name: "Murovac", code: "MU" },
+    { name: "Radmanci", code: "RA" },
+    { name: "Savin Bor", code: "SB" },
+    { name: "Trpezi", code: "TP" },
+    { name: "Tucanje", code: "TU" },
+    { name: "Vrbica", code: "VB" },
+  ],
+};
+
+/* ═══════════════════════════════════════════
+   PLANSKI DOKUMENTI PO OPŠTINAMA
+   ═══════════════════════════════════════════ */
+const PLANSKI_DOKUMENTI = {
+  "Podgorica": ["PUP Podgorice", "DUP Centar", "DUP Stara Varoš", "DUP Zagorič", "DUP Konik", "DUP Tološi", "DUP Drač", "DUP Momišići", "GUP Podgorice", "PPPPN Podgorica", "LSL Golubovci"],
+  "Nikšić": ["PUP Nikšića", "DUP Centar", "DUP Kličevo", "GUP Nikšića", "DUP Humci", "PPPPN Nikšić"],
+  "Bar": ["PUP Bara", "DUP Centar", "DUP Sutomore", "DUP Šušanj", "GUP Bara", "DUP Stari Bar", "PPPPN Bar"],
+  "Budva": ["PUP Budve", "DUP Centar", "DUP Bečići", "DUP Sveti Stefan", "DUP Petrovac", "GUP Budve", "PPPPN Budva"],
+  "Kotor": ["PUP Kotora", "DUP Stari Grad", "DUP Škaljari", "DUP Dobrota", "GUP Kotora", "DUP Risan", "PPPPN Kotor"],
+  "Herceg Novi": ["PUP Herceg Novog", "DUP Centar", "DUP Igalo", "DUP Bijela", "GUP Herceg Novog", "DUP Meljine", "PPPPN Herceg Novi"],
+  "Cetinje": ["PUP Cetinja", "DUP Centar", "GUP Cetinja", "DUP Njeguši", "PPPPN Cetinje"],
+  "Bijelo Polje": ["PUP Bijelog Polja", "DUP Centar", "GUP Bijelog Polja", "PPPPN Bijelo Polje"],
+  "Pljevlja": ["PUP Pljevalja", "DUP Centar", "GUP Pljevalja", "PPPPN Pljevlja"],
+  "Berane": ["PUP Berana", "DUP Centar", "GUP Berana", "PPPPN Berane"],
+  "Ulcinj": ["PUP Ulcinja", "DUP Centar", "DUP Velika Plaža", "GUP Ulcinja", "PPPPN Ulcinj"],
+  "Tivat": ["PUP Tivta", "DUP Centar", "DUP Seljanovo", "GUP Tivta", "DUP Radovići", "PPPPN Tivat"],
+  "Danilovgrad": ["PUP Danilovgrada", "DUP Centar", "GUP Danilovgrada", "PPPPN Danilovgrad"],
+  "Rožaje": ["PUP Rožaja", "DUP Centar", "GUP Rožaja", "PPPPN Rožaje"],
+  "Kolašin": ["PUP Kolašina", "DUP Centar", "GUP Kolašina", "PPPPN Kolašin"],
+  "Mojkovac": ["PUP Mojkovca", "DUP Centar", "GUP Mojkovca", "PPPPN Mojkovac"],
+  "Plav": ["PUP Plava", "DUP Centar", "GUP Plava", "PPPPN Plav"],
+  "Žabljak": ["PUP Žabljaka", "DUP Centar", "GUP Žabljaka", "PPPPN Žabljak"],
+  "Šavnik": ["PUP Šavnika", "DUP Centar", "GUP Šavnika", "PPPPN Šavnik"],
+  "Andrijevica": ["PUP Andrijevice", "DUP Centar", "GUP Andrijevice", "PPPPN Andrijevica"],
+  "Plužine": ["PUP Plužina", "DUP Centar", "GUP Plužina", "PPPPN Plužine"],
+  "Gusinje": ["PUP Gusinja", "DUP Centar", "GUP Gusinja", "PPPPN Gusinje"],
+  "Tuzi": ["PUP Tuzi", "DUP Centar", "GUP Tuzi", "PPPPN Tuzi"],
+  "Zeta": ["PUP Zete", "DUP Golubovci", "GUP Zete", "PPPPN Zeta"],
+  "Petnjica": ["PUP Petnjice", "DUP Centar", "GUP Petnjice", "PPPPN Petnjica"],
+};
+
+/* ═══════════════════════════════════════════
+   RIMSKI BROJEVI
+   ═══════════════════════════════════════════ */
+const ROMAN_NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+function monthToRoman(month) {
+  return ROMAN_NUMERALS[Math.max(0, Math.min(11, Number(month) - 1))] || "I";
+}
+
+/* ═══════════════════════════════════════════
    UTILITY FUNKCIJE
    ═══════════════════════════════════════════ */
 function pad2(v) { return String(v).padStart(2, "0"); }
 
-function buildProjectCode(sequence, year, month) {
+function getOpstinaCode(opstinaName) {
+  const found = OPSTINE_CODES.find((o) => o.name === opstinaName);
+  return found ? found.code : "XX";
+}
+
+function getKOCode(opstinaName, koName) {
+  const koList = KATASTARSKE_OPSTINE[opstinaName];
+  if (!koList) return "XX";
+  const found = koList.find((k) => k.name === koName);
+  return found ? found.code : "XX";
+}
+
+function getNextSequenceForKO(projects, koName, year) {
+  const existing = projects
+    .filter((p) => p.katastarskaOpstina === koName && Number(p.projectYear) === Number(year))
+    .map((p) => Number(p.projectSequence) || 0)
+    .sort((a, b) => a - b);
+  for (let i = 1; i <= existing.length + 1; i++) {
+    if (!existing.includes(i)) return i;
+  }
+  return existing.length + 1;
+}
+
+function buildProjectCode(sequence, year, month, koCode, opstinaCode) {
   const yy = String(year || ACTIVE_YEAR).slice(-2);
-  const mm = pad2(month || new Date().getMonth() + 1);
+  const roman = monthToRoman(month || new Date().getMonth() + 1);
   const ss = pad2(sequence || 1);
-  return `AVM${yy}${mm}-KP.${ss}`;
+  const ko = koCode || "XX";
+  const op = opstinaCode || "XX";
+  return `AVM/${roman}${ss}.${ko}-${op}.${yy}`;
+}
+
+function buildProjectFolderCode(sequence, year, month, koCode, opstinaCode) {
+  const yy = String(year || ACTIVE_YEAR).slice(-2);
+  const roman = monthToRoman(month || new Date().getMonth() + 1);
+  const ss = pad2(sequence || 1);
+  const ko = koCode || "XX";
+  const op = opstinaCode || "XX";
+  return `AVM.${roman}${ss}.${ko}-${op}.${yy}`;
 }
 
 function sanitizeFolderPart(value) {
@@ -90,19 +847,36 @@ function sanitizeFolderPart(value) {
   return text.slice(0, 80);
 }
 
-function buildProjectFolderName(project) {
-  const code = sanitizeFolderPart(project?.projectCode || "");
-  const name = sanitizeFolderPart(project?.nazivPredmeta || "");
-  const loc  = sanitizeFolderPart(project?.opstina || "");
-  return [code, name, loc].filter(Boolean).join("_");
-}
-
 function buildProjectFolderPath(basePath, project) {
   const base = String(basePath || "").replace(/[\\/]+$/g, "");
-  const folder = buildProjectFolderName(project);
-  if (!base) return folder;
-  if (!folder) return base;
-  return `${base}/${folder}`;
+  const year = String(project?.projectYear || ACTIVE_YEAR);
+  const opstina = sanitizeFolderPart(project?.opstina || "");
+  const ko = sanitizeFolderPart(project?.katastarskaOpstina || "");
+  const folderCode = buildProjectFolderCode(
+    project?.projectSequence,
+    project?.projectYear,
+    project?.projectMonth,
+    getKOCode(project?.opstina, project?.katastarskaOpstina),
+    getOpstinaCode(project?.opstina)
+  );
+  if (!base) return folderCode;
+  return `${base}/${year}/${opstina}/${ko}/${folderCode}`;
+}
+
+function buildOffersFolderPath(basePath, year) {
+  const base = String(basePath || "").replace(/[\\/]+$/g, "");
+  return `${base}/${year}/Ponude`;
+}
+
+function buildOfferFileName(project) {
+  const folderCode = buildProjectFolderCode(
+    project?.projectSequence,
+    project?.projectYear,
+    project?.projectMonth,
+    getKOCode(project?.opstina, project?.katastarskaOpstina),
+    getOpstinaCode(project?.opstina)
+  );
+  return `${folderCode}.pdf`;
 }
 
 function isDesktopAvailable() {
@@ -157,6 +931,16 @@ function loadSettings() {
   } catch { return { baseFolderPath: "C:/AVM/Projekti" }; }
 }
 
+function loadTasks() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(TASKS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
 function buildDefaultOfferDescription(project) {
   const vrsta = String(project?.vrstaRadova || "").trim();
   if (vrsta) return `Konzervatorski projekat za potrebe ${vrsta}`;
@@ -202,17 +986,19 @@ function recalcChecklist(checklist = {}) {
 /* ═══════════════════════════════════════════
    NORMALIZACIJA PROJEKTA
    ═══════════════════════════════════════════ */
-function emptyNewProject(count, year = ACTIVE_YEAR) {
+function emptyNewProject(projects, year = ACTIVE_YEAR, koName = "", opstinaName = "") {
+  const seq = koName ? getNextSequenceForKO(projects, koName, year) : 1;
   return {
-    projectSequence: count + 1,
+    projectSequence: seq,
     projectYear: Number(year || ACTIVE_YEAR),
     projectMonth: new Date().getMonth() + 1,
     startDate: todayIso(),
     nazivPredmeta: "", investitor: "", projektant: "",
-    vrstaRadova: "", parcela: "", katastarskaOpstina: "",
-    urbanistickaParcela: "", opstina: "", planskiDokument: "",
+    vrstaRadova: "", parcela: "", katastarskaOpstina: koName,
+    urbanistickaParcela: "", opstina: opstinaName, planskiDokument: "",
     status: "U toku", stage: "Ponuda", opis: "",
     googleMapsLink: "", assignedTo: "",
+    mapLat: "", mapLng: "",
   };
 }
 
@@ -227,9 +1013,12 @@ function normalizeProject(project) {
   const month = Number(project.projectMonth || (project.startDate ? new Date(project.startDate).getMonth() + 1 : 1));
   const seq = Number(project.projectSequence || 1);
 
+  const koCode = getKOCode(project.opstina, project.katastarskaOpstina);
+  const opCode = getOpstinaCode(project.opstina);
+
   const p = {
     id: project.id || `PRJ-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    projectCode: project.projectCode || buildProjectCode(seq, year, month),
+    projectCode: project.projectCode || buildProjectCode(seq, year, month, koCode, opCode),
     projectSequence: seq, projectYear: year, projectMonth: month,
     startDate: project.startDate || todayIso(),
     nazivPredmeta: project.nazivPredmeta || "",
@@ -245,6 +1034,8 @@ function normalizeProject(project) {
     stage: normalizeStage(project.stage || "Ponuda"),
     opis: project.opis || "",
     googleMapsLink: project.googleMapsLink || "",
+    mapLat: project.mapLat || "",
+    mapLng: project.mapLng || "",
     folderPath: project.folderPath || "",
     assignedTo: project.assignedTo || "",
     notes: Array.isArray(project.notes) ? project.notes : [],
@@ -289,7 +1080,7 @@ function normalizeProject(project) {
 function importLegacyProject(raw) {
   return normalizeProject({
     id: `PRJ-LEGACY-${raw.year}-${raw.seq}-${Math.random().toString(36).slice(2, 8)}`,
-    projectCode: raw.new_code || buildProjectCode(raw.seq, raw.year, raw.month),
+    projectCode: raw.new_code || buildProjectCode(raw.seq, raw.year, raw.month, "XX", "XX"),
     projectSequence: raw.seq || 1,
     projectYear: raw.year || ACTIVE_YEAR,
     projectMonth: raw.month || 1,
@@ -353,6 +1144,81 @@ function buildOsmEmbedUrl(value) {
 }
 
 /* ═══════════════════════════════════════════
+   GOOGLE MAPS PICKER MODAL
+   ═══════════════════════════════════════════ */
+function GoogleMapsPicker({ onSelect, onClose, initialLat, initialLng }) {
+  const [lat, setLat] = useState(initialLat || 42.4304);
+  const [lng, setLng] = useState(initialLng || 19.2594);
+  const iframeRef = useRef(null);
+
+  const mapUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(14,14,14,0.3)", zIndex: 3000 }} />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        width: "min(90vw, 700px)", height: "min(80vh, 550px)",
+        background: PAPER, borderRadius: 12, zIndex: 3001,
+        boxShadow: "0 16px 50px rgba(14,14,14,0.18)", fontFamily: "'Inter', sans-serif",
+        display: "flex", flexDirection: "column", overflow: "hidden",
+      }}>
+        <div style={{ padding: "12px 16px", borderBottom: `1px solid ${RULE}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>Odaberi lokaciju na mapi</div>
+            <div style={{ fontSize: 11, color: SAGE, marginTop: 2 }}>Unesi koordinate ili klikni na lokaciju u Google Maps</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: SAGE }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: "10px 16px", display: "flex", gap: 8, alignItems: "flex-end", borderBottom: `1px solid ${RULE}` }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: SAGE, textTransform: "uppercase", letterSpacing: "0.04em" }}>Latitude</span>
+            <input type="number" step="0.0001" value={lat} onChange={(e) => setLat(Number(e.target.value) || 0)}
+              style={{ border: `1px solid ${RULE}`, borderRadius: 6, padding: "7px 10px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", width: "100%", boxSizing: "border-box" }}
+            />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: SAGE, textTransform: "uppercase", letterSpacing: "0.04em" }}>Longitude</span>
+            <input type="number" step="0.0001" value={lng} onChange={(e) => setLng(Number(e.target.value) || 0)}
+              style={{ border: `1px solid ${RULE}`, borderRadius: 6, padding: "7px 10px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", width: "100%", boxSizing: "border-box" }}
+            />
+          </label>
+          <button onClick={() => {
+            onSelect(lat, lng);
+            onClose();
+          }} style={{
+            background: MOSS, color: PAPER, border: "none", borderRadius: 6,
+            padding: "8px 16px", fontWeight: 600, fontSize: 12, cursor: "pointer",
+            fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap",
+          }}>
+            <Check size={14} style={{ marginRight: 4, verticalAlign: "middle" }} /> Potvrdi
+          </button>
+        </div>
+
+        <div style={{ flex: 1, position: "relative" }}>
+          <iframe
+            ref={iframeRef}
+            title="Google Maps Picker"
+            src={mapUrl}
+            style={{ width: "100%", height: "100%", border: "none" }}
+            loading="lazy"
+            allowFullScreen
+          />
+          <div style={{
+            position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
+            background: MOSS, color: PAPER, padding: "6px 14px", borderRadius: 20,
+            fontSize: 11, fontWeight: 600, boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+          }}>
+            Unesi koordinate iznad i klikni Potvrdi
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
    REUSABLE UI KOMPONENTE
    ═══════════════════════════════════════════ */
 function Input({ label, style: extraStyle, ...props }) {
@@ -405,7 +1271,7 @@ function Btn({ children, active, danger, primary, style: extraStyle, ...props })
 
   if (active || primary) { bg = MOSS; color = PAPER; border = `1px solid ${MOSS}`; }
   else if (danger) { bg = hovered ? DANGER_BG : "transparent"; color = DANGER; border = hovered ? `1px solid ${DANGER_BORDER}` : "1px solid transparent"; }
-  else if (hovered) { border = `1px solid ${RULE}`; color = INK; }
+  else if (hovered) { border = `1px solid ${RULE}`; bg = LINEN; color = INK; }
 
   return (
     <button
@@ -434,12 +1300,13 @@ function MetaCard({ label, value, large }) {
   );
 }
 
-function MapPreview({ value }) {
-  const openUrl = buildMapOpenUrl(value);
-  const osmUrl = buildOsmEmbedUrl(value);
-  const coords = extractCoordinates(value);
+function MapPreview({ value, lat, lng }) {
+  const openUrl = buildMapOpenUrl(value || (lat && lng ? `${lat},${lng}` : ""));
+  const coordsValue = value || (lat && lng ? `${lat},${lng}` : "");
+  const osmUrl = buildOsmEmbedUrl(coordsValue);
+  const coords = extractCoordinates(coordsValue);
 
-  if (!value) {
+  if (!coordsValue) {
     return <div style={{ padding: 14, color: MUTED, fontSize: 12, border: `1px dashed ${RULE}`, borderRadius: 8, background: CREAM }}>Nije unijeta lokacija.</div>;
   }
 
@@ -549,9 +1416,11 @@ function PipelineCard({ project, isSelected, onClick, isMobile }) {
 /* ═══════════════════════════════════════════
    PIPELINE BOČNI PANEL
    ═══════════════════════════════════════════ */
-function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, userName, isMobile }) {
+function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, userName, isMobile, tasks }) {
   const [newNote, setNewNote] = useState("");
   if (!project) return null;
+
+  const projectTasks = (tasks || []).filter((t) => t.projectId === project.id);
 
   const addNote = () => {
     if (!newNote.trim()) return;
@@ -562,7 +1431,6 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
     setNewNote("");
   };
 
-  // Activity feed: merge notes + stage events
   const activityItems = [
     ...project.notes.map((n) => ({ type: "note", ...n })),
   ].sort((a, b) => {
@@ -603,7 +1471,7 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
         )}
       </div>
 
-      {/* Mobile project title below back button */}
+      {/* Mobile project title */}
       {isMobile && (
         <div style={{ padding: "8px 16px 12px", borderBottom: `1px solid ${RULE}` }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, letterSpacing: "0.06em" }}>{project.projectCode}</div>
@@ -639,8 +1507,11 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
           </Select>
         </div>
 
-        {/* Assigned to */}
-        <Input label="Dodijeljeni radnik" value={project.assignedTo} onChange={(e) => updateField("assignedTo", e.target.value)} placeholder="Ime radnika" />
+        {/* Assigned to dropdown */}
+        <Select label="Dodijeljeni radnik" value={project.assignedTo} onChange={(e) => updateField("assignedTo", e.target.value)}>
+          <option value="">— Odaberi —</option>
+          {RADNICI.map((r) => <option key={r} value={r}>{r}</option>)}
+        </Select>
 
         {/* Financial summary */}
         {isAdmin && (
@@ -655,10 +1526,28 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
           </div>
         )}
 
+        {/* Project tasks */}
+        {projectTasks.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 8 }}>Zadaci projekta</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {projectTasks.map((t) => (
+                <div key={t.id} style={{ padding: "8px 10px", background: CREAM, borderRadius: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                  {t.status === "završen" ? <CheckSquare size={14} color={MOSS} /> : <Square size={14} color={MUTED} />}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: t.status === "završen" ? MUTED : INK, textDecoration: t.status === "završen" ? "line-through" : "none" }}>{t.text}</div>
+                    {t.assignedTo && <div style={{ fontSize: 10, color: SAGE, marginTop: 2 }}>{t.assignedTo}{t.dueDate ? ` · ${formatDisplayDate(t.dueDate)}` : ""}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Mini map */}
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 8 }}>Lokacija</div>
-          <MapPreview value={project.googleMapsLink} />
+          <MapPreview value={project.googleMapsLink} lat={project.mapLat} lng={project.mapLng} />
         </div>
 
         {/* Activity feed */}
@@ -818,7 +1707,6 @@ function DashboardView({ projects, yearFilter, isMobile }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Top cards */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
         <MetaCard large label="Ukupno predmeta" value={total} />
         <MetaCard large label="Aktivni" value={active} />
@@ -830,12 +1718,11 @@ function DashboardView({ projects, yearFilter, isMobile }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-        {/* Stage bar chart */}
         <div style={{ background: CREAM, borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>Projekti po fazi</div>
           {PIPELINE_STAGES.map((stage) => (
             <div key={stage} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <div style={{ width: 90, fontSize: 11, color: INK, textAlign: "right", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stage}</div>
+              <div style={{ width: 110, fontSize: 11, color: INK, textAlign: "right", flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stage}</div>
               <div style={{ flex: 1, height: 18, background: RULE, borderRadius: 4, overflow: "hidden" }}>
                 <div style={{
                   width: `${(byStage[stage] / maxStageCount) * 100}%`, height: "100%",
@@ -848,7 +1735,6 @@ function DashboardView({ projects, yearFilter, isMobile }) {
           ))}
         </div>
 
-        {/* By worker */}
         <div style={{ background: CREAM, borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>Projekti po radniku</div>
           {Object.entries(byWorker).sort((a, b) => b[1] - a[1]).map(([worker, count]) => (
@@ -859,7 +1745,6 @@ function DashboardView({ projects, yearFilter, isMobile }) {
           ))}
         </div>
 
-        {/* By status */}
         <div style={{ background: CREAM, borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>Po statusu</div>
           {Object.entries(byStatus).map(([status, count]) => (
@@ -870,7 +1755,6 @@ function DashboardView({ projects, yearFilter, isMobile }) {
           ))}
         </div>
 
-        {/* By year */}
         <div style={{ background: CREAM, borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>Po godini</div>
           {Object.entries(byYear).sort((a, b) => Number(b[0]) - Number(a[0])).map(([year, count]) => (
@@ -1034,15 +1918,141 @@ function OffersEditor({ project, updateChecklistField, updateSelectedOfferItem, 
 }
 
 /* ═══════════════════════════════════════════
+   ZADACI (TODO) POGLED
+   ═══════════════════════════════════════════ */
+function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
+  const [newTaskText, setNewTaskText] = useState("");
+  const [newTaskAssigned, setNewTaskAssigned] = useState("");
+  const [newTaskProject, setNewTaskProject] = useState("");
+  const [newTaskDue, setNewTaskDue] = useState("");
+  const [filterStatus, setFilterStatus] = useState("otvoren");
+
+  const visibleTasks = tasks.filter((t) => {
+    if (!isAdmin && t.assignedTo !== userName) return false;
+    if (filterStatus === "otvoren") return t.status === "otvoren";
+    if (filterStatus === "završen") return t.status === "završen";
+    return true;
+  });
+
+  function addTask() {
+    if (!newTaskText.trim()) return;
+    const task = {
+      id: `TASK-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      text: newTaskText.trim(),
+      assignedTo: newTaskAssigned || userName,
+      projectId: newTaskProject || "",
+      dueDate: newTaskDue || "",
+      status: "otvoren",
+      createdAt: new Date().toISOString(),
+      createdBy: userName,
+    };
+    setTasks((cur) => [task, ...cur]);
+    setNewTaskText("");
+    setNewTaskAssigned("");
+    setNewTaskProject("");
+    setNewTaskDue("");
+  }
+
+  function toggleTask(taskId) {
+    setTasks((cur) => cur.map((t) => t.id === taskId ? { ...t, status: t.status === "otvoren" ? "završen" : "otvoren" } : t));
+  }
+
+  function deleteTask(taskId) {
+    if (!window.confirm("Obriši zadatak?")) return;
+    setTasks((cur) => cur.filter((t) => t.id !== taskId));
+  }
+
+  const getProjectName = (pid) => {
+    if (!pid) return "";
+    const p = projects.find((pr) => pr.id === pid);
+    return p ? (p.nazivPredmeta || p.projectCode) : "";
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* New task form */}
+      <div style={{ background: CREAM, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase" }}>Novi zadatak</div>
+        <Input label="Tekst zadatka" value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder="Šta treba uraditi..." />
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 8 }}>
+          <Select label="Dodijeljeno" value={newTaskAssigned} onChange={(e) => setNewTaskAssigned(e.target.value)}>
+            <option value="">— Ja —</option>
+            {RADNICI.map((r) => <option key={r} value={r}>{r}</option>)}
+          </Select>
+          <Select label="Vezan za projekat" value={newTaskProject} onChange={(e) => setNewTaskProject(e.target.value)}>
+            <option value="">— Nijedno —</option>
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.projectCode} — {p.nazivPredmeta || "Bez naziva"}</option>)}
+          </Select>
+          <Input label="Rok" type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} />
+        </div>
+        <Btn primary onClick={addTask} style={{ alignSelf: "flex-start" }}>
+          <Plus size={14} /> Dodaj zadatak
+        </Btn>
+      </div>
+
+      {/* Filter */}
+      <div style={{ display: "flex", gap: 6 }}>
+        {["otvoren", "završen", "sve"].map((f) => (
+          <Btn key={f} active={filterStatus === f} onClick={() => setFilterStatus(f)} style={{ fontSize: 11, padding: "6px 12px" }}>
+            {f === "otvoren" ? "Otvoreni" : f === "završen" ? "Završeni" : "Sve"}
+          </Btn>
+        ))}
+      </div>
+
+      {/* Tasks list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {!visibleTasks.length && <div style={{ color: MUTED, fontSize: 13, padding: 20, textAlign: "center" }}>Nema zadataka.</div>}
+        {visibleTasks.map((t) => {
+          const isOverdue = t.dueDate && t.status === "otvoren" && new Date(t.dueDate) < new Date();
+          return (
+            <div key={t.id} style={{
+              padding: "12px 14px", background: PAPER, borderRadius: 8,
+              border: `1px solid ${isOverdue ? DANGER_BORDER : RULE}`,
+              display: "flex", alignItems: "flex-start", gap: 10,
+            }}>
+              <button onClick={() => toggleTask(t.id)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 2, marginTop: 1,
+                color: t.status === "završen" ? MOSS : MUTED, flexShrink: 0,
+              }}>
+                {t.status === "završen" ? <CheckSquare size={18} /> : <Square size={18} />}
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 13, fontWeight: 600, color: t.status === "završen" ? MUTED : INK,
+                  textDecoration: t.status === "završen" ? "line-through" : "none",
+                }}>
+                  {t.text}
+                </div>
+                <div style={{ fontSize: 11, color: SAGE, marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {t.assignedTo && <span><User size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />{t.assignedTo}</span>}
+                  {t.projectId && <span style={{ color: MOSS, fontWeight: 600 }}>{getProjectName(t.projectId)}</span>}
+                  {t.dueDate && <span style={{ color: isOverdue ? DANGER : SAGE }}><Calendar size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />{formatDisplayDate(t.dueDate)}</span>}
+                </div>
+              </div>
+              {isAdmin && (
+                <button onClick={() => deleteTask(t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: MUTED, flexShrink: 0 }}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    MAIN APP KOMPONENT
    ═══════════════════════════════════════════ */
 export default function App() {
   const [projects, setProjects] = useState(() => loadProjects().map(normalizeProject));
+  const [tasks, setTasks] = useState(() => loadTasks());
   const [baseFolderPath, setBaseFolderPath] = useState(loadSettings().baseFolderPath);
   const [selectedId, setSelectedId] = useState(() => loadProjects()[0]?.id || null);
   const [page, setPage] = useState("pipeline");
   const [accessMode, setAccessMode] = useState("admin");
-  const [newProject, setNewProject] = useState(() => emptyNewProject(loadProjects().length, ACTIVE_YEAR));
+  const [newProject, setNewProject] = useState(() => emptyNewProject(loadProjects(), ACTIVE_YEAR));
   const [pdfStatus, setPdfStatus] = useState("");
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("all");
@@ -1057,13 +2067,20 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [panelProjectId, setPanelProjectId] = useState(null);
   const [showNewForm, setShowNewForm] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth <= 768 : false);
 
-  // Persist to localStorage
+  // Persist projects to localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects.map(normalizeProject)));
   }, [projects]);
+
+  // Persist tasks to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  }, [tasks]);
 
   // Auth init
   useEffect(() => {
@@ -1092,7 +2109,7 @@ export default function App() {
     loadRole();
   }, [session]);
 
-  // Cloud load
+  // Cloud load projects
   async function loadProjectsFromCloud(showLoading = true) {
     if (!session?.user?.id) return;
     if (showLoading) setSyncStatus("Učitavanje...");
@@ -1104,7 +2121,24 @@ export default function App() {
     setCloudLoaded(true);
   }
 
-  useEffect(() => { if (session?.user?.id) loadProjectsFromCloud(true); }, [session?.user?.id]);
+  // Cloud load tasks
+  async function loadTasksFromCloud() {
+    if (!session?.user?.id) return;
+    try {
+      const { data } = await supabase.from("tasks").select("id, data, updated_at").order("updated_at", { ascending: false });
+      if (data?.length) {
+        const cloud = data.map((r) => r.data || {});
+        setTasks(cloud);
+      }
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadProjectsFromCloud(true);
+      loadTasksFromCloud();
+    }
+  }, [session?.user?.id]);
 
   // Realtime subscription
   useEffect(() => {
@@ -1113,7 +2147,7 @@ export default function App() {
     return () => supabase.removeChannel(ch);
   }, [session?.user?.id]);
 
-  // Sync to cloud
+  // Sync projects to cloud
   useEffect(() => {
     if (!session?.user?.id || !cloudLoaded) return;
     const t = setTimeout(async () => {
@@ -1133,6 +2167,21 @@ export default function App() {
     }, 800);
     return () => clearTimeout(t);
   }, [projects, session?.user?.id, userRole, cloudLoaded]);
+
+  // Sync tasks to cloud
+  useEffect(() => {
+    if (!session?.user?.id || !cloudLoaded) return;
+    const t = setTimeout(async () => {
+      try {
+        const now = new Date().toISOString();
+        if (userRole === "admin") {
+          const rows = tasks.map((tk) => ({ id: tk.id, owner_id: session.user.id, data: tk, updated_at: now }));
+          await supabase.from("tasks").upsert(rows, { onConflict: "id" });
+        }
+      } catch {}
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [tasks, session?.user?.id, userRole, cloudLoaded]);
 
   // Settings persist
   useEffect(() => {
@@ -1205,8 +2254,10 @@ export default function App() {
     if (!selectedProject) return;
     updateSelectedProject((p) => {
       const next = { ...p, [field]: value };
-      if (["projectYear", "projectMonth", "projectSequence"].includes(field)) {
-        next.projectCode = buildProjectCode(next.projectSequence, next.projectYear, next.projectMonth);
+      if (["projectYear", "projectMonth", "projectSequence", "opstina", "katastarskaOpstina"].includes(field)) {
+        const koCode = getKOCode(next.opstina, next.katastarskaOpstina);
+        const opCode = getOpstinaCode(next.opstina);
+        next.projectCode = buildProjectCode(next.projectSequence, next.projectYear, next.projectMonth, koCode, opCode);
         next.folderPath = buildProjectFolderPath(baseFolderPath, next);
       }
       if (field === "vrstaRadova") next.checklist = { ...p.checklist, offerOpis: buildDefaultOfferDescription(next) };
@@ -1305,38 +2356,47 @@ export default function App() {
         return ys + lines.length * lh;
       };
 
-      // Header
-      pdf.setFillColor(226, 232, 240);
+      // Ink & Moss PDF header
+      const mossR = 61, mossG = 74, mossB = 61;
+      const sageR = 107, sageG = 122, sageB = 107;
+      const linenR = 240, linenG = 238, linenB = 232;
+      const ruleR = 224, ruleG = 221, ruleB = 213;
+      const inkR = 14, inkG = 14, inkB = 14;
+
+      pdf.setFillColor(mossR, mossG, mossB);
       pdf.roundedRect(margin, y, cw, 34, 3, 3, "F");
       if (logoDataUrl) {
         try { const lw = 44, lh = lw / Math.max(logoAspectRatio, 0.1); pdf.addImage(logoDataUrl, "PNG", margin + 4, y + (34 - lh) / 2, lw, lh); } catch {}
       }
-      pdf.setTextColor(15, 23, 42);
+      pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(15);
       pdf.text("PONUDA", pw - margin - 30, y + 13);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(8.5);
       pdf.text(sanitizePdfText(`br. ${offer.number}`), pw - margin - 30, y + 21);
       y += 42;
 
-      // Info row
-      pdf.setFillColor(248, 250, 252); pdf.setDrawColor(226, 232, 240);
+      // Info row - linen bg
+      pdf.setFillColor(linenR, linenG, linenB); pdf.setDrawColor(ruleR, ruleG, ruleB);
       pdf.roundedRect(margin, y, cw, 16, 2, 2, "FD");
+      pdf.setTextColor(sageR, sageG, sageB);
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(7);
       pdf.text("INVESTITOR", margin + 3, y + 5);
       pdf.text("DATUM", margin + 140, y + 5);
+      pdf.setTextColor(inkR, inkG, inkB);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
       pdf.text(clamp(project.investitor || "-", 34), margin + 3, y + 11);
       pdf.text(sanitizePdfText(formatDisplayDate(offer.date) || "-"), margin + 140, y + 11);
       y += 22;
 
       // Description
+      pdf.setTextColor(inkR, inkG, inkB);
       pdf.setFontSize(8.5);
       y = writeWrap(`${offer.description} na katastarskoj parceli ${project.parcela || "-"}${project.katastarskaOpstina ? `, KO ${project.katastarskaOpstina}` : ""}${project.opstina ? `, ${project.opstina}` : ""}.`, margin, y, cw, 4.2, 3);
       y += 5;
 
-      // Table
+      // Table - Ink & Moss palette
       const c1 = 82, c2 = 24, c3 = 36, c4 = cw - c1 - c2 - c3, rh = 7, gap = 1.1;
-      pdf.setFillColor(15, 23, 42); pdf.setTextColor(255, 255, 255);
+      pdf.setFillColor(mossR, mossG, mossB); pdf.setTextColor(255, 255, 255);
       pdf.roundedRect(margin, y, cw, rh, 1.3, 1.3, "F");
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
       pdf.text("Opis", margin + 2, y + 4.7);
@@ -1345,12 +2405,13 @@ export default function App() {
       pdf.text("Ukupno", margin + c1 + c2 + c3 + 2, y + 4.7);
       y += rh + gap;
 
-      pdf.setTextColor(15, 23, 42);
+      pdf.setTextColor(inkR, inkG, inkB);
       const drawRow = (row, opts = {}) => {
-        const bg = opts.bg || [248, 250, 252];
+        const bg = opts.bg || [linenR, linenG, linenB];
         pdf.setFillColor(bg[0], bg[1], bg[2]);
         pdf.roundedRect(margin, y, cw, rh, 1.2, 1.2, "F");
         pdf.setFont("helvetica", opts.bold ? "bold" : "normal"); pdf.setFontSize(7.2);
+        pdf.setTextColor(inkR, inkG, inkB);
         pdf.text(clamp(row[0], 38), margin + 2, y + 4.7);
         pdf.text(clamp(row[1], 16), margin + c1 + 2, y + 4.7);
         pdf.text(clamp(row[2], 18), margin + c1 + c2 + 2, y + 4.7);
@@ -1369,15 +2430,23 @@ export default function App() {
       const pdvAmt = tb * (Number(checklist.pdvStopa || 21) / 100);
       const ts = Number(checklist.ukupnoSaPdv || 0);
 
-      drawRow(["FAZA I", "60%", "/", numberFormat(f1)], { bg: [241, 245, 249] });
-      drawRow(["FAZA II", "40%", "/", numberFormat(f2)], { bg: [241, 245, 249] });
-      drawRow(["UKUPNO", "", "", numberFormat(tb)], { bg: [235, 240, 246], bold: true });
-      drawRow([`PDV ${checklist.pdvStopa || 21}%`, "", "", numberFormat(pdvAmt)], { bg: [235, 240, 246], bold: true });
-      drawRow(["UKUPNO + PDV", "", "", numberFormat(ts)], { bg: [214, 221, 230], bold: true });
-      y += 3;
+      drawRow(["FAZA I", "60%", "/", numberFormat(f1)], { bg: [ruleR, ruleG, ruleB] });
+      drawRow(["FAZA II", "40%", "/", numberFormat(f2)], { bg: [ruleR, ruleG, ruleB] });
+      drawRow(["UKUPNO", "", "", numberFormat(tb)], { bg: [sageR, sageG, sageB], bold: true });
+      drawRow([`PDV ${checklist.pdvStopa || 21}%`, "", "", numberFormat(pdvAmt)], { bg: [sageR, sageG, sageB], bold: true });
 
-      // Phase boxes
-      pdf.setFillColor(248, 250, 252); pdf.setDrawColor(226, 232, 240);
+      // Total row in moss
+      pdf.setFillColor(mossR, mossG, mossB);
+      pdf.roundedRect(margin, y, cw, rh, 1.2, 1.2, "F");
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.2);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text("UKUPNO + PDV", margin + 2, y + 4.7);
+      pdf.text(numberFormat(ts), margin + c1 + c2 + c3 + 2, y + 4.7);
+      y += rh + gap + 3;
+
+      // Phase boxes - linen
+      pdf.setTextColor(inkR, inkG, inkB);
+      pdf.setFillColor(linenR, linenG, linenB); pdf.setDrawColor(ruleR, ruleG, ruleB);
       pdf.roundedRect(margin, y, cw, 22, 2, 2, "FD");
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
       pdf.text("FAZA I", margin + 3, y + 5.5);
@@ -1385,7 +2454,7 @@ export default function App() {
       writeWrap(checklist.phase1Description || DEFAULT_PHASE_1_TEXT, margin + 3, y + 10, cw - 6, 3.4, 4);
       y += 26;
 
-      pdf.setFillColor(248, 250, 252);
+      pdf.setFillColor(linenR, linenG, linenB);
       pdf.roundedRect(margin, y, cw, 22, 2, 2, "FD");
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
       pdf.text("FAZA II", margin + 3, y + 5.5);
@@ -1393,44 +2462,68 @@ export default function App() {
       writeWrap(checklist.phase2Description || DEFAULT_PHASE_2_TEXT, margin + 3, y + 10, cw - 6, 3.4, 4);
 
       // Footer
+      pdf.setTextColor(sageR, sageG, sageB);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
       pdf.text(sanitizePdfText(`Podgorica, ${formatDisplayDate(offer.date)}.`), margin, 282);
+      pdf.setTextColor(mossR, mossG, mossB);
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8);
       pdf.text("AVM architects d.o.o.", 145, 282);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.2);
       pdf.text("Andrija Vuksanovic", 145, 287);
       pdf.text("spec.Sci.arh. konzervator", 145, 291);
 
-      const fileName = `Ponuda_${project.projectCode.replace(/[^\w.-]+/g, "_")}.pdf`;
+      // Save to Ponude folder
+      const fileName = buildOfferFileName(project);
+      const offersFolder = buildOffersFolderPath(baseFolderPath, project.projectYear);
+
       if (isDesktopAvailable() && window.desktopAPI?.savePdf) {
         try {
           const bytes = Array.from(new Uint8Array(pdf.output("arraybuffer")));
-          const result = await window.desktopAPI.savePdf({ folderPath: project.folderPath || buildProjectFolderPath(baseFolderPath, project), fileName, bytes });
+          const result = await window.desktopAPI.savePdf({ folderPath: offersFolder, fileName, bytes });
           if (result?.ok) { setPdfStatus(`PDF sačuvan: ${result.outputPath}`); return; }
         } catch {}
       }
       pdf.save(fileName);
-      setPdfStatus("PDF preuzet.");
+      setPdfStatus(`PDF preuzet: ${fileName}`);
     } catch (err) { console.error(err); setPdfStatus("Greška pri PDF-u."); }
   }
 
   async function addProject() {
     if (userRole !== "admin") { window.alert("Samo admin."); return; }
     const year = Number(newProject.projectYear || ACTIVE_YEAR);
-    const seq = Number(newProject.projectSequence || projects.filter((p) => Number(p.projectYear) === year).length + 1);
     const month = Number(newProject.projectMonth || new Date().getMonth() + 1);
-    const code = buildProjectCode(seq, year, month);
+    const koName = newProject.katastarskaOpstina || "";
+    const opstinaName = newProject.opstina || "";
+    const seq = getNextSequenceForKO(projects, koName, year);
+    const koCode = getKOCode(opstinaName, koName);
+    const opCode = getOpstinaCode(opstinaName);
+    const code = buildProjectCode(seq, year, month, koCode, opCode);
     const created = normalizeProject({
       id: `PRJ-${Date.now()}`, ...newProject, projectYear: year, projectMonth: month, projectSequence: seq,
-      projectCode: code, folderPath: buildProjectFolderPath(baseFolderPath, { ...newProject, projectCode: code }),
+      projectCode: code, folderPath: buildProjectFolderPath(baseFolderPath, { ...newProject, projectCode: code, projectSequence: seq, projectYear: year, projectMonth: month }),
       checklist: recalcChecklist({ offerOpis: buildDefaultOfferDescription(newProject), pdvStopa: 21, phase1Description: DEFAULT_PHASE_1_TEXT, phase2Description: DEFAULT_PHASE_2_TEXT, offerItems: [makeOfferItem(1)] }),
     });
     if (!created.nazivPredmeta || !created.investitor) { window.alert("Unesi naziv predmeta i investitora."); return; }
-    if (isDesktopAvailable() && created.folderPath) { try { await window.desktopAPI.createProjectFolder(created.folderPath); } catch {} }
+
+    // Create folder structure
+    if (isDesktopAvailable() && created.folderPath) {
+      try {
+        await window.desktopAPI.createProjectFolder(created.folderPath);
+        // Create subfolders
+        const subfolders = ["01_Dokumentacija", "02_Projekat", "03_Fotografije", "04_Izlazni_PDF"];
+        for (const sub of subfolders) {
+          try { await window.desktopAPI.createProjectFolder(`${created.folderPath}/${sub}`); } catch {}
+        }
+        // Ensure Ponude folder exists
+        const offersFolder = buildOffersFolderPath(baseFolderPath, year);
+        try { await window.desktopAPI.createProjectFolder(offersFolder); } catch {}
+      } catch {}
+    }
+
     setProjects((c) => [created, ...c]);
     setSelectedId(created.id);
     setShowNewForm(false);
-    setNewProject(emptyNewProject(projects.filter((p) => Number(p.projectYear) === year).length + 1, year));
+    setNewProject(emptyNewProject([created, ...projects], year));
     showPopup(`Novi predmet: ${created.nazivPredmeta}`);
   }
 
@@ -1442,6 +2535,7 @@ export default function App() {
     setSelectedId(rem[0]?.id || null);
     if (panelProjectId === projectId) setPanelProjectId(null);
     try { await supabase.from("projects").delete().eq("id", projectId); setSyncStatus("Obrisano."); } catch { setSyncStatus("Lokalno obrisano."); }
+    showPopup(`Obrisan: ${p?.nazivPredmeta || p?.projectCode}. Redni broj ${p?.projectSequence} je sada slobodan.`);
   }
 
   function exportChecklistCsv() {
@@ -1483,12 +2577,23 @@ export default function App() {
         if (error) throw error;
       }
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(norm));
+      window.localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
       setSyncStatus("Sačuvano.");
       showPopup("Podaci sačuvani.");
     } catch { setSyncStatus("Greška."); showPopup("Greška pri čuvanju."); }
   }
 
   async function logout() { await supabase.auth.signOut(); }
+
+  // Dependent KO list for new project form
+  const newProjectKOList = KATASTARSKE_OPSTINE[newProject.opstina] || [];
+  const newProjectPlanskiList = PLANSKI_DOKUMENTI[newProject.opstina] || [];
+
+  // Current project code preview
+  const previewKoCode = getKOCode(newProject.opstina, newProject.katastarskaOpstina);
+  const previewOpCode = getOpstinaCode(newProject.opstina);
+  const previewSeq = newProject.katastarskaOpstina ? getNextSequenceForKO(projects, newProject.katastarskaOpstina, newProject.projectYear || ACTIVE_YEAR) : 1;
+  const previewCode = buildProjectCode(previewSeq, newProject.projectYear || ACTIVE_YEAR, newProject.projectMonth || new Date().getMonth() + 1, previewKoCode, previewOpCode);
 
   // Loading / Login guards
   if (authLoading) {
@@ -1501,12 +2606,12 @@ export default function App() {
     { id: "dashboard", label: "Dashboard", icon: BarChart3, adminOnly: true },
     { id: "checklist", label: "Checklista", icon: Table },
     { id: "offers", label: "Ponude", icon: FileText, adminOnly: true },
+    { id: "tasks", label: "Zadaci", icon: ListTodo },
   ].filter((n) => !n.adminOnly || isAdmin);
 
   // ═══════════════ RENDER ═══════════════
   return (
     <div style={{ minHeight: "100vh", background: LINEN, color: INK, fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
-      {/* Global mobile responsive styles */}
       <style>{`
         @media (max-width: 768px) {
           input, select, textarea {
@@ -1527,6 +2632,23 @@ export default function App() {
       `}</style>
       <PopupCenter notifications={notifications} />
 
+      {/* Google Maps Picker Modal */}
+      {showMapPicker && (
+        <GoogleMapsPicker
+          initialLat={Number(newProject.mapLat) || 42.4304}
+          initialLng={Number(newProject.mapLng) || 19.2594}
+          onSelect={(lat, lng) => {
+            setNewProject((p) => ({
+              ...p,
+              mapLat: lat,
+              mapLng: lng,
+              googleMapsLink: `https://www.google.com/maps?q=${lat},${lng}`,
+            }));
+          }}
+          onClose={() => setShowMapPicker(false)}
+        />
+      )}
+
       {/* Side panel overlay */}
       {panelProjectId && (
         <>
@@ -1542,6 +2664,7 @@ export default function App() {
             }}
             userName={userName}
             isMobile={isMobile}
+            tasks={tasks}
           />
         </>
       )}
@@ -1571,14 +2694,9 @@ export default function App() {
                 const Icon = n.icon;
                 const active = page === n.id;
                 return (
-                  <button key={n.id} onClick={() => setPage(n.id)} style={{
-                    display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6,
-                    border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                    background: active ? MOSS : "transparent", color: active ? PAPER : SAGE,
-                    transition: "all 0.12s", fontFamily: "'Inter', sans-serif", textAlign: "left",
-                  }}>
+                  <SidebarBtn key={n.id} active={active} onClick={() => setPage(n.id)}>
                     <Icon size={15} /> {n.label}
-                  </button>
+                  </SidebarBtn>
                 );
               })}
             </div>
@@ -1645,21 +2763,21 @@ export default function App() {
 
             {/* Bottom actions */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4, borderTop: `1px solid ${RULE}`, paddingTop: 8 }}>
-              {isAdmin && <Btn onClick={() => setShowNewForm(true)} style={{ justifyContent: "flex-start", fontSize: 11 }}><Plus size={13} /> Novi predmet</Btn>}
+              {isAdmin && <SidebarBtn onClick={() => setShowNewForm(true)}><Plus size={13} /> Novi predmet</SidebarBtn>}
               {isAdmin && selectedId && (
-                <Btn danger onClick={() => deleteProject(selectedId)} style={{ justifyContent: "flex-start", fontSize: 11 }}>
+                <SidebarBtn danger onClick={() => deleteProject(selectedId)}>
                   <Trash2 size={13} /> Obriši projekat
-                </Btn>
+                </SidebarBtn>
               )}
-              <Btn onClick={saveNow} style={{ justifyContent: "flex-start", fontSize: 11 }}><Save size={13} /> Sačuvaj</Btn>
-              {isAdmin && <Btn onClick={exportChecklistCsv} style={{ justifyContent: "flex-start", fontSize: 11 }}><Download size={13} /> CSV export</Btn>}
+              <SidebarBtn onClick={saveNow}><Save size={13} /> Sačuvaj</SidebarBtn>
+              {isAdmin && <SidebarBtn onClick={exportChecklistCsv}><Download size={13} /> CSV export</SidebarBtn>}
               {isAdmin && (
-                <label style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 11, color: SAGE, cursor: "pointer", fontWeight: 600 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 10px", fontSize: 11, color: SAGE, cursor: "pointer", fontWeight: 600, borderRadius: 6, border: "1px solid transparent", fontFamily: "'Inter', sans-serif" }}>
                   <FileText size={13} /> Import JSON
                   <input type="file" accept=".json" onChange={handleImportJson} style={{ display: "none" }} />
                 </label>
               )}
-              <Btn onClick={logout} style={{ justifyContent: "flex-start", fontSize: 11 }}><LogOut size={13} /> Odjava</Btn>
+              <SidebarBtn onClick={logout}><LogOut size={13} /> Odjava</SidebarBtn>
             </div>
           </aside>
         )}
@@ -1712,7 +2830,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Page title */}
           {!isMobile && (
             <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -1726,28 +2843,18 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── PIPELINE VIEW ─── */}
           {page === "pipeline" && (
-            <PipelineView
-              projects={filteredProjects}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-              onOpenPanel={(id) => setPanelProjectId(id)}
-              isMobile={isMobile}
-            />
+            <PipelineView projects={filteredProjects} selectedId={selectedId} setSelectedId={setSelectedId} onOpenPanel={(id) => setPanelProjectId(id)} isMobile={isMobile} />
           )}
 
-          {/* ─── DASHBOARD VIEW ─── */}
           {page === "dashboard" && isAdmin && (
             <DashboardView projects={projects} yearFilter={yearFilter} isMobile={isMobile} />
           )}
 
-          {/* ─── CHECKLIST VIEW ─── */}
           {page === "checklist" && (
             <ChecklistView projects={filteredProjects} isAdmin={isAdmin} setSelectedId={setSelectedId} onOpenPanel={(id) => setPanelProjectId(id)} isMobile={isMobile} />
           )}
 
-          {/* ─── OFFERS VIEW ─── */}
           {page === "offers" && isAdmin && (
             <OffersEditor
               project={selectedProject}
@@ -1759,6 +2866,10 @@ export default function App() {
               exportOfferPdf={exportOfferPdf}
               pdfStatus={pdfStatus}
             />
+          )}
+
+          {page === "tasks" && (
+            <TasksView tasks={tasks} setTasks={setTasks} projects={projects} isAdmin={isAdmin} userName={userName} isMobile={isMobile} />
           )}
         </main>
       </div>
@@ -1772,9 +2883,9 @@ export default function App() {
         }}>
           {[
             { id: "pipeline", label: "Pipeline", icon: LayoutGrid },
-            { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+            { id: "tasks", label: "Zadaci", icon: ListTodo },
             { id: "checklist", label: "Checklista", icon: Table },
-            { id: "newproject", label: "Novi predmet", icon: Plus },
+            { id: "newproject", label: "Novi", icon: Plus },
           ].map((n) => {
             const Icon = n.icon;
             const active = n.id === "newproject" ? false : page === n.id;
@@ -1803,7 +2914,7 @@ export default function App() {
           <div onClick={() => setShowNewForm(false)} style={{ position: "fixed", inset: 0, background: "rgba(14,14,14,0.2)", zIndex: 2000 }} />
           <div style={{
             position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            width: isMobile ? "calc(100% - 32px)" : 520, maxHeight: "85vh", overflowY: "auto",
+            width: isMobile ? "calc(100% - 32px)" : 560, maxHeight: "85vh", overflowY: "auto",
             background: PAPER, borderRadius: 12, padding: 24, zIndex: 2001,
             boxShadow: "0 16px 50px rgba(14,14,14,0.12)", fontFamily: "'Inter', sans-serif",
           }}>
@@ -1813,32 +2924,71 @@ export default function App() {
             </div>
 
             <div style={{ background: CREAM, borderRadius: 8, padding: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: "0.06em", textTransform: "uppercase" }}>Kod projekta</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: MOSS, marginTop: 4 }}>
-                {buildProjectCode(Number(newProject.projectSequence || projects.filter((p) => Number(p.projectYear) === Number(newProject.projectYear || ACTIVE_YEAR)).length + 1), Number(newProject.projectYear || ACTIVE_YEAR), Number(newProject.projectMonth || new Date().getMonth() + 1))}
-              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: "0.06em", textTransform: "uppercase" }}>Kod projekta (preview)</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: MOSS, marginTop: 4 }}>{previewCode}</div>
+              <div style={{ fontSize: 10, color: SAGE, marginTop: 2 }}>Folder: {buildProjectFolderCode(previewSeq, newProject.projectYear || ACTIVE_YEAR, newProject.projectMonth || new Date().getMonth() + 1, previewKoCode, previewOpCode)}</div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Input label="Godina" type="number" value={newProject.projectYear} onChange={(e) => {
-                const yr = Number(e.target.value || ACTIVE_YEAR);
-                const sug = projects.filter((p) => Number(p.projectYear) === yr).length + 1;
-                setNewProject((p) => ({ ...p, projectYear: yr, projectSequence: sug }));
+                setNewProject((p) => ({ ...p, projectYear: Number(e.target.value || ACTIVE_YEAR) }));
               }} />
-              <Input label="Mjesec" type="number" min="1" max="12" value={newProject.projectMonth} onChange={(e) => setNewProject((p) => ({ ...p, projectMonth: Number(e.target.value || 1) }))} />
-              <Input label="Redni broj" type="number" value={newProject.projectSequence} onChange={(e) => setNewProject((p) => ({ ...p, projectSequence: Number(e.target.value || 1) }))} />
+              <Select label="Mjesec" value={newProject.projectMonth} onChange={(e) => setNewProject((p) => ({ ...p, projectMonth: Number(e.target.value || 1) }))}>
+                {ROMAN_NUMERALS.map((r, i) => <option key={i} value={i + 1}>{r} — {["Januar","Februar","Mart","April","Maj","Jun","Jul","Avgust","Septembar","Oktobar","Novembar","Decembar"][i]}</option>)}
+              </Select>
               <Input label="Datum početka" type="date" value={newProject.startDate} onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))} />
+
+              {/* Opština dropdown */}
+              <Select label="Opština" value={newProject.opstina} onChange={(e) => {
+                const val = e.target.value;
+                setNewProject((p) => ({ ...p, opstina: val, katastarskaOpstina: "", planskiDokument: "" }));
+              }}>
+                <option value="">— Odaberi opštinu —</option>
+                {OPSTINE_CODES.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.code})</option>)}
+              </Select>
+
+              {/* Katastarska opština dropdown - zavisan */}
+              <Select label="Katastarska opština" value={newProject.katastarskaOpstina} onChange={(e) => {
+                setNewProject((p) => ({ ...p, katastarskaOpstina: e.target.value }));
+              }}>
+                <option value="">— Odaberi KO —</option>
+                {newProjectKOList.map((k) => <option key={k.name} value={k.name}>{k.name} ({k.code})</option>)}
+              </Select>
+
               <div style={{ gridColumn: "1/-1" }}><Input label="Naziv predmeta" value={newProject.nazivPredmeta} onChange={(e) => setNewProject((p) => ({ ...p, nazivPredmeta: e.target.value }))} /></div>
               <Input label="Investitor" value={newProject.investitor} onChange={(e) => setNewProject((p) => ({ ...p, investitor: e.target.value }))} />
               <Input label="Projektant" value={newProject.projektant} onChange={(e) => setNewProject((p) => ({ ...p, projektant: e.target.value }))} />
               <Input label="Vrsta radova" value={newProject.vrstaRadova} onChange={(e) => setNewProject((p) => ({ ...p, vrstaRadova: e.target.value }))} placeholder="izgradnja, rekonstrukcija..." />
               <Input label="Katastarska parcela" value={newProject.parcela} onChange={(e) => setNewProject((p) => ({ ...p, parcela: e.target.value }))} />
-              <Input label="Katastarska opština" value={newProject.katastarskaOpstina} onChange={(e) => setNewProject((p) => ({ ...p, katastarskaOpstina: e.target.value }))} />
-              <Input label="Opština" value={newProject.opstina} onChange={(e) => setNewProject((p) => ({ ...p, opstina: e.target.value }))} />
               <Input label="Urbanistička parcela" value={newProject.urbanistickaParcela} onChange={(e) => setNewProject((p) => ({ ...p, urbanistickaParcela: e.target.value }))} />
-              <Input label="Planski dokument" value={newProject.planskiDokument} onChange={(e) => setNewProject((p) => ({ ...p, planskiDokument: e.target.value }))} />
-              <Input label="Dodijeljeni radnik" value={newProject.assignedTo} onChange={(e) => setNewProject((p) => ({ ...p, assignedTo: e.target.value }))} />
-              <Input label="Google Maps link" value={newProject.googleMapsLink} onChange={(e) => setNewProject((p) => ({ ...p, googleMapsLink: e.target.value }))} />
+
+              {/* Planski dokument dropdown */}
+              <Select label="Planski dokument" value={newProject.planskiDokument} onChange={(e) => setNewProject((p) => ({ ...p, planskiDokument: e.target.value }))}>
+                <option value="">— Odaberi planski dokument —</option>
+                {newProjectPlanskiList.map((d) => <option key={d} value={d}>{d}</option>)}
+              </Select>
+
+              {/* Radnik dropdown */}
+              <Select label="Dodijeljeni radnik" value={newProject.assignedTo} onChange={(e) => setNewProject((p) => ({ ...p, assignedTo: e.target.value }))}>
+                <option value="">— Odaberi —</option>
+                {RADNICI.map((r) => <option key={r} value={r}>{r}</option>)}
+              </Select>
+
+              {/* Google Maps picker */}
+              <div style={{ gridColumn: "1/-1" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4 }}>Lokacija</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input value={newProject.googleMapsLink} onChange={(e) => setNewProject((p) => ({ ...p, googleMapsLink: e.target.value }))} placeholder="Google Maps link ili koordinate"
+                    style={{ flex: 1, border: `1px solid ${RULE}`, borderRadius: 6, padding: "9px 11px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
+                  />
+                  <Btn onClick={() => setShowMapPicker(true)} style={{ padding: "9px 12px" }}>
+                    <MapPin size={14} /> Mapa
+                  </Btn>
+                </div>
+                {newProject.mapLat && newProject.mapLng && (
+                  <div style={{ fontSize: 11, color: SAGE, marginTop: 4 }}>Koordinate: {newProject.mapLat}, {newProject.mapLng}</div>
+                )}
+              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, marginTop: 12 }}>
@@ -1851,6 +3001,10 @@ export default function App() {
               }}><FolderOpen size={13} /></Btn>
             </div>
 
+            <div style={{ background: CREAM, borderRadius: 6, padding: "8px 10px", marginTop: 10, fontSize: 11, color: SAGE }}>
+              Folder: {buildProjectFolderPath(baseFolderPath, { ...newProject, projectSequence: previewSeq, projectYear: newProject.projectYear || ACTIVE_YEAR, projectMonth: newProject.projectMonth || new Date().getMonth() + 1 })}
+            </div>
+
             <Btn primary onClick={addProject} style={{ width: "100%", marginTop: 16, padding: "11px 14px" }}>
               <Plus size={15} /> Dodaj predmet
             </Btn>
@@ -1858,5 +3012,35 @@ export default function App() {
         </>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR BUTTON COMPONENT
+   ═══════════════════════════════════════════ */
+function SidebarBtn({ children, active, danger, onClick, style: extraStyle }) {
+  const [hovered, setHovered] = useState(false);
+  let bg = "transparent";
+  let color = SAGE;
+  let border = "none";
+
+  if (active) { bg = MOSS; color = PAPER; }
+  else if (danger) { color = DANGER; if (hovered) { bg = DANGER_BG; border = `1px solid ${DANGER_BORDER}`; } }
+  else if (hovered) { border = `1px solid ${RULE}`; bg = LINEN; color = INK; }
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6,
+        border, cursor: "pointer", fontSize: 12, fontWeight: 600,
+        background: bg, color, transition: "all 0.12s", fontFamily: "'Inter', sans-serif",
+        textAlign: "left", ...extraStyle,
+      }}
+    >
+      {children}
+    </button>
   );
 }
