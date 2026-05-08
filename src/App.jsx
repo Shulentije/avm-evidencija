@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import jsPDF from "jspdf";
-import logoUrl from "./assets/logo.png";
 import { createClient } from "@supabase/supabase-js";
 import {
   FolderOpen, FileText, Plus, ClipboardList, StickyNote,
   ShieldCheck, User, MapPin, Trash2, ExternalLink, Pencil, Save,
   LayoutGrid, BarChart3, Table, ChevronRight, X, Download,
   LogOut, Search, Calendar, Users, Activity, Clock, Check,
-  CheckSquare, Square, ListTodo,
+  CheckSquare, Square, ListTodo, Circle, ChevronDown, Edit3,
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════
@@ -19,6 +18,7 @@ const LEGACY_STORAGE_KEY = `${STORAGE_BASE_KEY}-${ACTIVE_YEAR}`;
 const STORAGE_KEY = `${STORAGE_BASE_KEY}-all-years`;
 const SETTINGS_KEY = `${STORAGE_BASE_KEY}-settings`;
 const TASKS_KEY = `${STORAGE_BASE_KEY}-tasks`;
+const CUSTOM_DATA_KEY = `${STORAGE_BASE_KEY}-custom-data`;
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -29,16 +29,23 @@ const supabase = createClient(
    INK & MOSS PALETA
    ═══════════════════════════════════════════ */
 const INK    = "#0e0e0e";
-const MOSS   = "#3d4a3d";
-const SAGE   = "#6b7a6b";
-const LINEN  = "#f0eee8";
+const MOSS   = "#0e0e0e";
+const SAGE   = "#888888";
+const LINEN  = "#fafafa";
 const PAPER  = "#ffffff";
-const RULE   = "#e0ddd5";
-const MUTED  = "#b0b8b0";
-const CREAM  = "#f7f6f2";
+const RULE   = "#e0e0e0";
+const MUTED  = "#999999";
+const CREAM  = "#f5f5f5";
 const DANGER = "#9b2c2c";
 const DANGER_BG = "#fef2f2";
 const DANGER_BORDER = "#e8c4c4";
+
+const STATUS_COLORS = {
+  "U toku": "#3d7a3d",
+  "Čeka investitora": "#c4882d",
+  "Na čekanju": "#8a8a8a",
+  "Završeno": "#2d6bc4",
+};
 
 /* ═══════════════════════════════════════════
    PIPELINE FAZE
@@ -172,6 +179,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Orahovo", code: "OR" },
     { name: "Gornje Selo", code: "GS" },
     { name: "Donje Selo", code: "DS" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Nikšić": [
     { name: "Nikšić", code: "NK" },
@@ -208,6 +216,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Straševina", code: "SV" },
     { name: "Riječani", code: "RI" },
     { name: "Bogetići", code: "BG" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Bar": [
     { name: "Bar", code: "BA" },
@@ -238,6 +247,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Gleđica", code: "GL" },
     { name: "Gornja Brca", code: "GB" },
     { name: "Donja Brca", code: "DBC" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Budva": [
     { name: "Budva", code: "BD" },
@@ -260,6 +270,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Režine", code: "RE" },
     { name: "Brajići", code: "BJ" },
     { name: "Miločer", code: "MI" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Kotor": [
     { name: "Kotor I", code: "K1" },
@@ -296,6 +307,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Zlatne Njive", code: "ZN" },
     { name: "Kubasi", code: "KB" },
     { name: "Prijeradi", code: "PJ" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Herceg Novi": [
     { name: "Herceg Novi", code: "HN" },
@@ -324,6 +336,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Mojdež", code: "MO" },
     { name: "Ubla", code: "UB" },
     { name: "Žlijebi", code: "ZL" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Cetinje": [
     { name: "Cetinje", code: "CE" },
@@ -357,6 +370,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Vrba", code: "VB" },
     { name: "Zagrablje", code: "ZG" },
     { name: "Žanjev Do", code: "ZD" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Bijelo Polje": [
     { name: "Bijelo Polje", code: "BP" },
@@ -393,6 +407,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Bliškovo", code: "BL" },
     { name: "Babića Brijeg", code: "BB" },
     { name: "Laholo", code: "LA" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Pljevlja": [
     { name: "Pljevlja", code: "PL" },
@@ -425,6 +440,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Vrulja", code: "VR" },
     { name: "Vidre", code: "VD" },
     { name: "Warrino", code: "VA" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Berane": [
     { name: "Berane", code: "BE" },
@@ -449,6 +465,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Pešca", code: "PE" },
     { name: "Kalica", code: "KA" },
     { name: "Mokra", code: "MK" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Ulcinj": [
     { name: "Ulcinj", code: "UL" },
@@ -476,6 +493,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Bijela Gora", code: "BG" },
     { name: "Ćurke", code: "CR" },
     { name: "Rastiš", code: "RS" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Tivat": [
     { name: "Tivat", code: "TV" },
@@ -496,6 +514,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Dumidran", code: "DM" },
     { name: "Gošići", code: "GO" },
     { name: "Ruljina", code: "RU" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Danilovgrad": [
     { name: "Danilovgrad", code: "DG" },
@@ -526,6 +545,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Bandići", code: "BA" },
     { name: "Vučica", code: "VU" },
     { name: "Ždrebaonik", code: "ZD" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Rožaje": [
     { name: "Rožaje", code: "RO" },
@@ -551,6 +571,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Vuča", code: "VU" },
     { name: "Bać", code: "BC" },
     { name: "Đuranovića Luke", code: "DL" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Kolašin": [
     { name: "Kolašin", code: "KO" },
@@ -578,6 +599,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Liješnje", code: "LI" },
     { name: "Manastir Morača", code: "MM" },
     { name: "Crkvine", code: "CR" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Mojkovac": [
     { name: "Mojkovac", code: "MK" },
@@ -595,6 +617,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Crvena Lokva", code: "CL" },
     { name: "Bjelojevići", code: "BJ" },
     { name: "Jakovići", code: "JK" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Plav": [
     { name: "Plav", code: "PL" },
@@ -615,6 +638,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Donja Ržanica", code: "DR" },
     { name: "Jara", code: "JA" },
     { name: "Martinoviće", code: "MR" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Žabljak": [
     { name: "Žabljak", code: "ZB" },
@@ -634,6 +658,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Šumanovac", code: "SM" },
     { name: "Tušinja", code: "TU" },
     { name: "Palež", code: "PZ" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Šavnik": [
     { name: "Šavnik", code: "SV" },
@@ -649,6 +674,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Tušina", code: "TU" },
     { name: "Bijela", code: "BI" },
     { name: "Gradina", code: "GR" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Andrijevica": [
     { name: "Andrijevica", code: "AN" },
@@ -668,6 +694,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Zabrđe", code: "ZB" },
     { name: "Trešnjevik", code: "TR" },
     { name: "Rijeka Marsenića", code: "RM" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Plužine": [
     { name: "Plužine", code: "PL" },
@@ -687,6 +714,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Zabrđe", code: "ZB" },
     { name: "Stolac", code: "SO" },
     { name: "Šćepan Polje", code: "SP" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Gusinje": [
     { name: "Gusinje", code: "GU" },
@@ -697,6 +725,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Vusanje", code: "VU" },
     { name: "Višnjevo", code: "VI" },
     { name: "Dolja", code: "DL" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Tuzi": [
     { name: "Tuzi", code: "TU" },
@@ -714,6 +743,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Arza", code: "AR" },
     { name: "Traboin", code: "TR" },
     { name: "Zatrijebač", code: "ZT" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Zeta": [
     { name: "Golubovci", code: "GL" },
@@ -734,6 +764,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Šušunja", code: "SU" },
     { name: "Bistrice", code: "BI" },
     { name: "Lješkopolje", code: "LJ" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
   "Petnjica": [
     { name: "Petnjica", code: "PE" },
@@ -751,6 +782,7 @@ const KATASTARSKE_OPSTINE = {
     { name: "Trpezi", code: "TP" },
     { name: "Tucanje", code: "TU" },
     { name: "Vrbica", code: "VB" },
+    { name: "Privremeni objekti", code: "PO" },
   ],
 };
 
@@ -784,6 +816,34 @@ const PLANSKI_DOKUMENTI = {
   "Zeta": ["PUP Zete", "DUP Golubovci", "GUP Zete", "PPPPN Zeta"],
   "Petnjica": ["PUP Petnjice", "DUP Centar", "GUP Petnjice", "PPPPN Petnjica"],
 };
+
+/* ═══════════════════════════════════════════
+   CUSTOM DATA MANAGEMENT
+   Čuva korisničke unose za dropdowne
+   ═══════════════════════════════════════════ */
+function loadCustomData() { try { const r = localStorage.getItem(CUSTOM_DATA_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; } }
+function saveCustomData(d) { localStorage.setItem(CUSTOM_DATA_KEY, JSON.stringify(d)); }
+function addCustomItem(category, value) {
+  if (!value || !value.trim()) return;
+  const d = loadCustomData(); if (!d[category]) d[category] = [];
+  if (!d[category].includes(value.trim())) d[category].push(value.trim());
+  saveCustomData(d);
+}
+function removeCustomItem(category, value) {
+  const d = loadCustomData(); if (d[category]) d[category] = d[category].filter(v => v !== value); saveCustomData(d);
+}
+function getCustomItems(category) { return loadCustomData()[category] || []; }
+function isCustomItem(category, value) { return getCustomItems(category).includes(value); }
+function getMergedRadnici(supabaseNames = []) { return [...new Set([...RADNICI, ...supabaseNames, ...getCustomItems("radnici")])]; }
+function getMergedOpstinaNames() { return [...new Set([...OPSTINE_CODES.map(o => o.name), ...getCustomItems("opstine")])]; }
+function getMergedKONames(opstina) {
+  const defaults = (KATASTARSKE_OPSTINE[opstina] || []).map(k => k.name);
+  return [...new Set([...defaults, ...getCustomItems(`ko_${opstina}`)])];
+}
+function getMergedPlanski(opstina) {
+  const defaults = PLANSKI_DOKUMENTI[opstina] || [];
+  return [...new Set([...defaults, ...getCustomItems(`planski_${opstina}`)])];
+}
 
 /* ═══════════════════════════════════════════
    RIMSKI BROJEVI
@@ -853,19 +913,28 @@ function buildProjectFolderPath(basePath, project) {
   const opstina = sanitizeFolderPart(project?.opstina || "");
   const ko = sanitizeFolderPart(project?.katastarskaOpstina || "");
   const folderCode = buildProjectFolderCode(
-    project?.projectSequence,
-    project?.projectYear,
-    project?.projectMonth,
-    getKOCode(project?.opstina, project?.katastarskaOpstina),
-    getOpstinaCode(project?.opstina)
+    project?.projectSequence, project?.projectYear, project?.projectMonth,
+    getKOCode(project?.opstina, project?.katastarskaOpstina), getOpstinaCode(project?.opstina)
   );
-  if (!base) return folderCode;
-  return `${base}/${year}/${opstina}/${ko}/${folderCode}`;
+  const parts = [folderCode];
+  if (project?.parcela) parts.push(sanitizeFolderPart(project.parcela));
+  if (project?.katastarskaOpstina) parts.push(sanitizeFolderPart(project.katastarskaOpstina));
+  if (project?.investitor) parts.push(sanitizeFolderPart(project.investitor));
+  if (project?.projektant) parts.push(sanitizeFolderPart(project.projektant));
+  const folderName = parts.join("_").slice(0, 200);
+  if (!base) return folderName;
+  return `${base}/${year}/${opstina}/${ko}/${folderName}`;
 }
 
 function buildOffersFolderPath(basePath, year) {
   const base = String(basePath || "").replace(/[\\/]+$/g, "");
   return `${base}/${year}/Ponude`;
+}
+
+function buildOfferNumber(project) {
+  const koCode = getKOCode(project?.opstina, project?.katastarskaOpstina);
+  const opCode = getOpstinaCode(project?.opstina);
+  return `P-${buildProjectFolderCode(project?.projectSequence, project?.projectYear, project?.projectMonth, koCode, opCode)}`;
 }
 
 function buildOfferFileName(project) {
@@ -1149,16 +1218,30 @@ function buildOsmEmbedUrl(value) {
 function GoogleMapsPicker({ onSelect, onClose, initialLat, initialLng }) {
   const [lat, setLat] = useState(initialLat || 42.4304);
   const [lng, setLng] = useState(initialLng || 19.2594);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [useSearch, setUseSearch] = useState(false);
   const iframeRef = useRef(null);
 
-  const mapUrl = `https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+  const coordMapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+  const searchMapUrl = searchQuery.trim()
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(searchQuery)}&z=15&output=embed`
+    : coordMapUrl;
+
+  function handleSearch() {
+    if (!searchQuery.trim()) return;
+    setUseSearch(true);
+  }
+
+  function handleCoordUpdate() {
+    setUseSearch(false);
+  }
 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(14,14,14,0.3)", zIndex: 3000 }} />
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        width: "min(90vw, 700px)", height: "min(80vh, 550px)",
+        width: "min(92vw, 720px)", height: "min(85vh, 600px)",
         background: PAPER, borderRadius: 12, zIndex: 3001,
         boxShadow: "0 16px 50px rgba(14,14,14,0.18)", fontFamily: "'Inter', sans-serif",
         display: "flex", flexDirection: "column", overflow: "hidden",
@@ -1166,21 +1249,32 @@ function GoogleMapsPicker({ onSelect, onClose, initialLat, initialLng }) {
         <div style={{ padding: "12px 16px", borderBottom: `1px solid ${RULE}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>Odaberi lokaciju na mapi</div>
-            <div style={{ fontSize: 11, color: SAGE, marginTop: 2 }}>Unesi koordinate ili klikni na lokaciju u Google Maps</div>
+            <div style={{ fontSize: 11, color: SAGE, marginTop: 2 }}>Pretraži lokaciju ili unesi koordinate</div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: SAGE }}><X size={18} /></button>
+        </div>
+
+        {/* Search bar */}
+        <div style={{ padding: "8px 16px", borderBottom: `1px solid ${RULE}`, display: "flex", gap: 6 }}>
+          <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Pretraži lokaciju (npr. Kotor stari grad)..."
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+            style={{ flex: 1, border: `1px solid ${RULE}`, borderRadius: 6, padding: "8px 10px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
+          />
+          <button onClick={handleSearch} style={{ background: MOSS, color: PAPER, border: "none", borderRadius: 6, padding: "8px 14px", cursor: "pointer", fontWeight: 600, fontSize: 12, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", gap: 4 }}>
+            <Search size={14} /> Traži
+          </button>
         </div>
 
         <div style={{ padding: "10px 16px", display: "flex", gap: 8, alignItems: "flex-end", borderBottom: `1px solid ${RULE}` }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
             <span style={{ fontSize: 10, fontWeight: 600, color: SAGE, textTransform: "uppercase", letterSpacing: "0.04em" }}>Latitude</span>
-            <input type="number" step="0.0001" value={lat} onChange={(e) => setLat(Number(e.target.value) || 0)}
+            <input type="number" step="0.0001" value={lat} onChange={(e) => { setLat(Number(e.target.value) || 0); handleCoordUpdate(); }}
               style={{ border: `1px solid ${RULE}`, borderRadius: 6, padding: "7px 10px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", width: "100%", boxSizing: "border-box" }}
             />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
             <span style={{ fontSize: 10, fontWeight: 600, color: SAGE, textTransform: "uppercase", letterSpacing: "0.04em" }}>Longitude</span>
-            <input type="number" step="0.0001" value={lng} onChange={(e) => setLng(Number(e.target.value) || 0)}
+            <input type="number" step="0.0001" value={lng} onChange={(e) => { setLng(Number(e.target.value) || 0); handleCoordUpdate(); }}
               style={{ border: `1px solid ${RULE}`, borderRadius: 6, padding: "7px 10px", fontSize: 13, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", width: "100%", boxSizing: "border-box" }}
             />
           </label>
@@ -1200,7 +1294,7 @@ function GoogleMapsPicker({ onSelect, onClose, initialLat, initialLng }) {
           <iframe
             ref={iframeRef}
             title="Google Maps Picker"
-            src={mapUrl}
+            src={useSearch ? searchMapUrl : coordMapUrl}
             style={{ width: "100%", height: "100%", border: "none" }}
             loading="lazy"
             allowFullScreen
@@ -1210,11 +1304,89 @@ function GoogleMapsPicker({ onSelect, onClose, initialLat, initialLng }) {
             background: MOSS, color: PAPER, padding: "6px 14px", borderRadius: 20,
             fontSize: 11, fontWeight: 600, boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
           }}>
-            Unesi koordinate iznad i klikni Potvrdi
+            Nađi lokaciju pretragom, unesi koordinate, pa klikni Potvrdi
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMBO INPUT - Dropdown + manual entry + save + delete
+   ═══════════════════════════════════════════ */
+function ComboInput({ label, value, onChange, options = [], customCategory, placeholder = "" }) {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const ref = useRef(null);
+  const inputVal = value || "";
+
+  const filtered = options.filter(o => !filter || o.toLowerCase().includes(filter.toLowerCase()));
+  const showDropdown = open && filtered.length > 0;
+
+  useEffect(() => {
+    function handleClickOutside(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleInputChange(e) {
+    const v = e.target.value;
+    setFilter(v);
+    onChange(v);
+    if (!open) setOpen(true);
+  }
+
+  function selectOption(opt) { onChange(opt); setFilter(""); setOpen(false); }
+
+  function handleBlur() {
+    setTimeout(() => {
+      if (customCategory && inputVal.trim() && !options.includes(inputVal.trim())) {
+        addCustomItem(customCategory, inputVal.trim());
+      }
+    }, 200);
+  }
+
+  function handleDelete(e, opt) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (customCategory && isCustomItem(customCategory, opt)) {
+      removeCustomItem(customCategory, opt);
+      if (value === opt) onChange("");
+    }
+  }
+
+  return (
+    <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase" }}>{label}</div>
+      <div style={{ display: "flex", gap: 0 }}>
+        <input value={inputVal} onChange={handleInputChange} onFocus={() => setOpen(true)} onBlur={handleBlur}
+          placeholder={placeholder}
+          style={{ flex: 1, border: `1px solid ${RULE}`, borderRadius: "6px 0 0 6px", padding: "9px 11px", fontSize: 13, outline: "none", background: PAPER, color: INK, boxSizing: "border-box", fontFamily: "'Inter', sans-serif" }} />
+        <button onClick={() => setOpen(!open)} type="button"
+          style={{ border: `1px solid ${RULE}`, borderLeft: "none", borderRadius: "0 6px 6px 0", padding: "0 8px", background: PAPER, cursor: "pointer", color: SAGE, display: "flex", alignItems: "center" }}>
+          <ChevronDown size={14} />
+        </button>
+      </div>
+      {showDropdown && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: PAPER, border: `1px solid ${RULE}`, borderRadius: 6, maxHeight: 200, overflowY: "auto", boxShadow: "0 8px 20px rgba(0,0,0,0.1)", marginTop: 2 }}>
+          {filtered.map((opt, i) => {
+            const isCust = customCategory && isCustomItem(customCategory, opt);
+            return (
+              <div key={`${opt}-${i}`} onMouseDown={() => selectOption(opt)}
+                style={{ padding: "8px 10px", cursor: "pointer", fontSize: 12, color: INK, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < filtered.length - 1 ? `1px solid ${RULE}` : "none", background: value === opt ? CREAM : "transparent" }}>
+                <span>{opt}</span>
+                {isCust && (
+                  <button onMouseDown={(e) => handleDelete(e, opt)} style={{ background: "none", border: "none", cursor: "pointer", color: DANGER, padding: 2, display: "flex" }}>
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1358,7 +1530,6 @@ function LoginScreen() {
         borderRadius: 12, padding: 32, display: "flex", flexDirection: "column", gap: 16,
         boxShadow: "0 8px 30px rgba(14,14,14,0.06)",
       }}>
-        <img src={logoUrl} alt="AVM logo" style={{ width: 120, height: "auto", objectFit: "contain", alignSelf: "center", marginBottom: 4 }} />
         <h1 style={{ margin: 0, textAlign: "center", fontSize: 20, fontWeight: 700, letterSpacing: "0.06em" }}>
           <span style={{ fontWeight: 800 }}>AVM</span> <span style={{ fontWeight: 300 }}>ARCHITECTS</span>
         </h1>
@@ -1393,7 +1564,12 @@ function PipelineCard({ project, isSelected, onClick, isMobile }) {
         minHeight: isMobile ? 44 : "auto",
       }}
     >
-      <div style={{ fontSize: isMobile ? 12 : 10, fontWeight: 700, color: MUTED, letterSpacing: "0.04em" }}>{project.projectCode}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: isMobile ? 12 : 10, fontWeight: 700, color: MUTED, letterSpacing: "0.04em" }}>{project.projectCode}</div>
+        <div title={project.status} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Circle size={8} fill={STATUS_COLORS[project.status] || MUTED} color={STATUS_COLORS[project.status] || MUTED} />
+        </div>
+      </div>
       <div style={{
         fontSize: isMobile ? 15 : 13, fontWeight: 600, color: textColor, marginTop: 3, transition: "color 0.15s",
         fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic",
@@ -1414,9 +1590,74 @@ function PipelineCard({ project, isSelected, onClick, isMobile }) {
 }
 
 /* ═══════════════════════════════════════════
+   EDIT PROJECT MODAL
+   ═══════════════════════════════════════════ */
+function EditProjectModal({ project, onSave, onClose, isMobile, baseFolderPath, radniciList }) {
+  const [form, setForm] = useState({ ...project });
+  const koOptions = getMergedKONames(form.opstina);
+  const planskiOptions = getMergedPlanski(form.opstina);
+  const radniciOptions = radniciList || getMergedRadnici();
+  const opstinaOptions = getMergedOpstinaNames();
+
+  function set(field, value) { setForm(f => ({ ...f, [field]: value })); }
+
+  function handleSave() {
+    const koCode = getKOCode(form.opstina, form.katastarskaOpstina);
+    const opCode = getOpstinaCode(form.opstina);
+    const updated = { ...form,
+      projectCode: buildProjectCode(form.projectSequence, form.projectYear, form.projectMonth, koCode, opCode),
+      folderPath: buildProjectFolderPath(baseFolderPath, form),
+    };
+    onSave(normalizeProject(updated));
+    onClose();
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(14,14,14,0.2)", zIndex: 2000 }} />
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: isMobile ? "calc(100% - 32px)" : 580, maxHeight: "85vh", overflowY: "auto", background: PAPER, borderRadius: 12, padding: 24, zIndex: 2001, boxShadow: "0 16px 50px rgba(14,14,14,0.12)", fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Izmijeni predmet</h2>
+          <Btn onClick={onClose} style={{ padding: 4 }}><X size={16} /></Btn>
+        </div>
+        <div style={{ background: CREAM, borderRadius: 8, padding: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: MUTED }}>Kod projekta</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: MOSS, marginTop: 4 }}>{form.projectCode}</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ gridColumn: "1/-1" }}><Input label="Naziv predmeta" value={form.nazivPredmeta} onChange={(e) => set("nazivPredmeta", e.target.value)} /></div>
+          <Input label="Investitor" value={form.investitor} onChange={(e) => set("investitor", e.target.value)} />
+          <Input label="Projektant" value={form.projektant} onChange={(e) => set("projektant", e.target.value)} />
+          <Input label="Vrsta radova" value={form.vrstaRadova} onChange={(e) => set("vrstaRadova", e.target.value)} />
+          <Input label="Katastarska parcela" value={form.parcela} onChange={(e) => set("parcela", e.target.value)} />
+          <Input label="Urbanistička parcela" value={form.urbanistickaParcela} onChange={(e) => set("urbanistickaParcela", e.target.value)} />
+          <ComboInput label="Opština" value={form.opstina} onChange={(v) => { set("opstina", v); set("katastarskaOpstina", ""); set("planskiDokument", ""); }} options={opstinaOptions} customCategory="opstine" />
+          <ComboInput label="Katastarska opština" value={form.katastarskaOpstina} onChange={(v) => set("katastarskaOpstina", v)} options={koOptions} customCategory={form.opstina ? `ko_${form.opstina}` : null} />
+          <ComboInput label="Planski dokument" value={form.planskiDokument} onChange={(v) => set("planskiDokument", v)} options={planskiOptions} customCategory={form.opstina ? `planski_${form.opstina}` : null} />
+          <ComboInput label="Dodijeljeni radnik" value={form.assignedTo} onChange={(v) => set("assignedTo", v)} options={radniciOptions} customCategory="radnici" />
+          <Select label="Faza" value={form.stage} onChange={(e) => set("stage", e.target.value)}>
+            {PIPELINE_STAGES.map((s) => <option key={s}>{s}</option>)}
+          </Select>
+          <Select label="Status" value={form.status} onChange={(e) => set("status", e.target.value)}>
+            <option>U toku</option><option>Čeka investitora</option><option>Završeno</option><option>Na čekanju</option>
+          </Select>
+          <div style={{ gridColumn: "1/-1" }}>
+            <Input label="Google Maps link / koordinate" value={form.googleMapsLink} onChange={(e) => set("googleMapsLink", e.target.value)} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <Btn primary onClick={handleSave} style={{ flex: 1 }}><Save size={14} /> Sačuvaj izmjene</Btn>
+          <Btn onClick={onClose}>Otkaži</Btn>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
    PIPELINE BOČNI PANEL
    ═══════════════════════════════════════════ */
-function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, userName, isMobile, tasks }) {
+function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, userName, isMobile, tasks, onEdit, radniciList }) {
   const [newNote, setNewNote] = useState("");
   if (!project) return null;
 
@@ -1466,18 +1707,24 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
                 {project.nazivPredmeta || "Bez naziva"}
               </div>
             </div>
-            <Btn onClick={onClose} style={{ padding: 6 }}><X size={16} /></Btn>
+            <div style={{ display: "flex", gap: 4 }}>
+              {isAdmin && <Btn onClick={onEdit} style={{ padding: 6 }}><Edit3 size={14} /></Btn>}
+              <Btn onClick={onClose} style={{ padding: 6 }}><X size={16} /></Btn>
+            </div>
           </>
         )}
       </div>
 
       {/* Mobile project title */}
       {isMobile && (
-        <div style={{ padding: "8px 16px 12px", borderBottom: `1px solid ${RULE}` }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, letterSpacing: "0.06em" }}>{project.projectCode}</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: INK, marginTop: 4, fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>
-            {project.nazivPredmeta || "Bez naziva"}
+        <div style={{ padding: "8px 16px 12px", borderBottom: `1px solid ${RULE}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: MUTED, letterSpacing: "0.06em" }}>{project.projectCode}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: INK, marginTop: 4, fontFamily: "'Spectral', 'Georgia', serif", fontStyle: "italic" }}>
+              {project.nazivPredmeta || "Bez naziva"}
+            </div>
           </div>
+          {isAdmin && <Btn onClick={onEdit} style={{ padding: "8px 12px" }}><Edit3 size={14} /> Izmijeni</Btn>}
         </div>
       )}
 
@@ -1507,11 +1754,10 @@ function SidePanel({ project, onClose, isAdmin, updateField, updateChecklist, us
           </Select>
         </div>
 
-        {/* Assigned to dropdown */}
-        <Select label="Dodijeljeni radnik" value={project.assignedTo} onChange={(e) => updateField("assignedTo", e.target.value)}>
-          <option value="">— Odaberi —</option>
-          {RADNICI.map((r) => <option key={r} value={r}>{r}</option>)}
-        </Select>
+        {/* Assigned to - ComboInput */}
+        <ComboInput label="Dodijeljeni radnik" value={project.assignedTo}
+          onChange={(val) => updateField("assignedTo", val)}
+          options={radniciList || getMergedRadnici()} customCategory="radnici" />
 
         {/* Financial summary */}
         {isAdmin && (
@@ -1804,11 +2050,11 @@ function ChecklistView({ projects, isAdmin, setSelectedId, onOpenPanel, isMobile
                 <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: INK, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.investitor || "—"}</td>
                 <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.vrstaRadova || "—"}</td>
                 <td style={{ padding: isMobile ? "12px 8px" : "8px 6px" }}>
-                  <span style={{ fontSize: isMobile ? 12 : 10, fontWeight: 700, background: p.stage === "Završeno" ? "#e8f0e8" : CREAM, color: p.stage === "Završeno" ? MOSS : INK, padding: "3px 8px", borderRadius: 4 }}>
+                  <span style={{ fontSize: isMobile ? 12 : 10, fontWeight: 700, background: p.stage === "Završeno" ? "#e8e8e8" : CREAM, color: p.stage === "Završeno" ? INK : INK, padding: "3px 8px", borderRadius: 4 }}>
                     {p.stage}
                   </span>
                 </td>
-                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.status}</td>
+                <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Circle size={8} fill={STATUS_COLORS[p.status] || MUTED} color={STATUS_COLORS[p.status] || MUTED} />{p.status}</span></td>
                 <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.assignedTo || "—"}</td>
                 {isAdmin && <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE, whiteSpace: "nowrap" }}>{p.checklist.ponudaBroj ? `${p.checklist.ponudaBroj}` : "—"}</td>}
                 <td style={{ padding: isMobile ? "12px 8px" : "8px 6px", color: SAGE }}>{p.checklist.analizaZavrsena || "—"}</td>
@@ -1859,13 +2105,13 @@ function OffersEditor({ project, updateChecklistField, updateSelectedOfferItem, 
         <MetaCard label="Projekat" value={project.projectCode} />
         <MetaCard label="Naziv" value={project.nazivPredmeta} />
         <MetaCard label="Investitor" value={project.investitor} />
-        <MetaCard label="Vrsta radova" value={project.vrstaRadova} />
+        <MetaCard label="Br. ponude" value={buildOfferNumber(project)} />
       </div>
 
       <div style={{ background: CREAM, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase" }}>Podaci ponude</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Input label="Broj ponude" value={project.checklist.ponudaBroj} onChange={(e) => updateChecklistField("ponudaBroj", e.target.value)} />
+          <Input label="Broj ponude" value={project.checklist.ponudaBroj || buildOfferNumber(project)} onChange={(e) => updateChecklistField("ponudaBroj", e.target.value)} />
           <Input label="Datum ponude" type="date" value={project.checklist.ponudaDatum} onChange={(e) => updateChecklistField("ponudaDatum", e.target.value)} />
         </div>
         <TextArea label="Opis ponude" rows={2} value={project.checklist.offerOpis || ""} onChange={(e) => updateChecklistField("offerOpis", e.target.value)} />
@@ -1920,12 +2166,14 @@ function OffersEditor({ project, updateChecklistField, updateSelectedOfferItem, 
 /* ═══════════════════════════════════════════
    ZADACI (TODO) POGLED
    ═══════════════════════════════════════════ */
-function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
+function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile, radniciList, onDeleteFromCloud }) {
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskAssigned, setNewTaskAssigned] = useState("");
   const [newTaskProject, setNewTaskProject] = useState("");
   const [newTaskDue, setNewTaskDue] = useState("");
   const [filterStatus, setFilterStatus] = useState("otvoren");
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [commentText, setCommentText] = useState("");
 
   const visibleTasks = tasks.filter((t) => {
     if (!isAdmin && t.assignedTo !== userName) return false;
@@ -1945,12 +2193,10 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
       status: "otvoren",
       createdAt: new Date().toISOString(),
       createdBy: userName,
+      comments: [],
     };
     setTasks((cur) => [task, ...cur]);
-    setNewTaskText("");
-    setNewTaskAssigned("");
-    setNewTaskProject("");
-    setNewTaskDue("");
+    setNewTaskText(""); setNewTaskAssigned(""); setNewTaskProject(""); setNewTaskDue("");
   }
 
   function toggleTask(taskId) {
@@ -1960,6 +2206,21 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
   function deleteTask(taskId) {
     if (!window.confirm("Obriši zadatak?")) return;
     setTasks((cur) => cur.filter((t) => t.id !== taskId));
+    if (onDeleteFromCloud) onDeleteFromCloud(taskId);
+  }
+
+  function addComment(taskId) {
+    if (!commentText.trim()) return;
+    setTasks((cur) => cur.map((t) => {
+      if (t.id !== taskId) return t;
+      const comments = Array.isArray(t.comments) ? t.comments : [];
+      return { ...t, comments: [...comments, {
+        id: `CMT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        text: commentText.trim(), author: userName,
+        createdAt: new Date().toLocaleString("sr-Latn-ME"),
+      }] };
+    }));
+    setCommentText("");
   }
 
   const getProjectName = (pid) => {
@@ -1970,27 +2231,23 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* New task form */}
       <div style={{ background: CREAM, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: SAGE, letterSpacing: "0.04em", textTransform: "uppercase" }}>Novi zadatak</div>
         <Input label="Tekst zadatka" value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder="Šta treba uraditi..." />
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 8 }}>
-          <Select label="Dodijeljeno" value={newTaskAssigned} onChange={(e) => setNewTaskAssigned(e.target.value)}>
-            <option value="">— Ja —</option>
-            {RADNICI.map((r) => <option key={r} value={r}>{r}</option>)}
-          </Select>
-          <Select label="Vezan za projekat" value={newTaskProject} onChange={(e) => setNewTaskProject(e.target.value)}>
-            <option value="">— Nijedno —</option>
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.projectCode} — {p.nazivPredmeta || "Bez naziva"}</option>)}
-          </Select>
+          <ComboInput label="Dodijeljeno" value={newTaskAssigned} onChange={(val) => setNewTaskAssigned(val)} options={radniciList || getMergedRadnici()} customCategory="radnici" placeholder="Ja" />
+          <ComboInput label="Vezan za projekat"
+            value={newTaskProject ? (() => { const p = projects.find(pr => pr.id === newTaskProject); return p ? `${p.projectCode} — ${p.nazivPredmeta || "Bez naziva"}` : ""; })() : ""}
+            onChange={(val) => {
+              const found = projects.find(p => `${p.projectCode} — ${p.nazivPredmeta || "Bez naziva"}` === val || p.projectCode === val);
+              setNewTaskProject(found ? found.id : "");
+            }}
+            options={projects.map(p => `${p.projectCode} — ${p.nazivPredmeta || "Bez naziva"}`)}
+            placeholder="Pretraži projekat..." />
           <Input label="Rok" type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} />
         </div>
-        <Btn primary onClick={addTask} style={{ alignSelf: "flex-start" }}>
-          <Plus size={14} /> Dodaj zadatak
-        </Btn>
+        <Btn primary onClick={addTask} style={{ alignSelf: "flex-start" }}><Plus size={14} /> Dodaj zadatak</Btn>
       </div>
-
-      {/* Filter */}
       <div style={{ display: "flex", gap: 6 }}>
         {["otvoren", "završen", "sve"].map((f) => (
           <Btn key={f} active={filterStatus === f} onClick={() => setFilterStatus(f)} style={{ fontSize: 11, padding: "6px 12px" }}>
@@ -1998,41 +2255,51 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
           </Btn>
         ))}
       </div>
-
-      {/* Tasks list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {!visibleTasks.length && <div style={{ color: MUTED, fontSize: 13, padding: 20, textAlign: "center" }}>Nema zadataka.</div>}
         {visibleTasks.map((t) => {
           const isOverdue = t.dueDate && t.status === "otvoren" && new Date(t.dueDate) < new Date();
+          const isExpanded = expandedTaskId === t.id;
+          const comments = Array.isArray(t.comments) ? t.comments : [];
           return (
-            <div key={t.id} style={{
-              padding: "12px 14px", background: PAPER, borderRadius: 8,
-              border: `1px solid ${isOverdue ? DANGER_BORDER : RULE}`,
-              display: "flex", alignItems: "flex-start", gap: 10,
-            }}>
-              <button onClick={() => toggleTask(t.id)} style={{
-                background: "none", border: "none", cursor: "pointer", padding: 2, marginTop: 1,
-                color: t.status === "završen" ? MOSS : MUTED, flexShrink: 0,
-              }}>
-                {t.status === "završen" ? <CheckSquare size={18} /> : <Square size={18} />}
-              </button>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13, fontWeight: 600, color: t.status === "završen" ? MUTED : INK,
-                  textDecoration: t.status === "završen" ? "line-through" : "none",
-                }}>
-                  {t.text}
-                </div>
-                <div style={{ fontSize: 11, color: SAGE, marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {t.assignedTo && <span><User size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />{t.assignedTo}</span>}
-                  {t.projectId && <span style={{ color: MOSS, fontWeight: 600 }}>{getProjectName(t.projectId)}</span>}
-                  {t.dueDate && <span style={{ color: isOverdue ? DANGER : SAGE }}><Calendar size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />{formatDisplayDate(t.dueDate)}</span>}
-                </div>
-              </div>
-              {isAdmin && (
-                <button onClick={() => deleteTask(t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: MUTED, flexShrink: 0 }}>
-                  <Trash2 size={14} />
+            <div key={t.id} style={{ background: PAPER, borderRadius: 8, border: `1px solid ${isOverdue ? DANGER_BORDER : RULE}`, overflow: "hidden" }}>
+              <div style={{ padding: isMobile ? "14px 14px" : "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, marginTop: 1, color: t.status === "završen" ? MOSS : MUTED, flexShrink: 0 }}>
+                  {t.status === "završen" ? <CheckSquare size={isMobile ? 22 : 18} /> : <Square size={isMobile ? 22 : 18} />}
                 </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: isMobile ? 15 : 13, fontWeight: 600, color: t.status === "završen" ? MUTED : INK, textDecoration: t.status === "završen" ? "line-through" : "none" }}>{t.text}</div>
+                  <div style={{ fontSize: isMobile ? 12 : 11, color: SAGE, marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {t.assignedTo && <span><User size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />{t.assignedTo}</span>}
+                    {t.projectId && <span style={{ color: MOSS, fontWeight: 600 }}>{getProjectName(t.projectId)}</span>}
+                    {t.dueDate && <span style={{ color: isOverdue ? DANGER : SAGE }}><Calendar size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />{formatDisplayDate(t.dueDate)}</span>}
+                  </div>
+                  <button onClick={() => setExpandedTaskId(isExpanded ? null : t.id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 0", marginTop: 4, display: "flex", alignItems: "center", gap: 4, color: isExpanded ? MOSS : SAGE, fontSize: isMobile ? 12 : 11, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
+                    <StickyNote size={isMobile ? 14 : 12} />
+                    {comments.length > 0 ? `Komentari (${comments.length})` : "Komentariši"}
+                    <ChevronDown size={12} style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                  </button>
+                </div>
+                {isAdmin && (<button onClick={() => deleteTask(t.id)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: MUTED, flexShrink: 0 }}><Trash2 size={14} /></button>)}
+              </div>
+              {isExpanded && (
+                <div style={{ borderTop: `1px solid ${RULE}`, padding: "10px 14px", background: CREAM }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: SAGE, textTransform: "uppercase", marginBottom: 6 }}>Komentari</div>
+                  {comments.length === 0 && <div style={{ fontSize: 11, color: MUTED, marginBottom: 8 }}>Nema komentara.</div>}
+                  {comments.map((c) => (
+                    <div key={c.id} style={{ padding: "6px 8px", background: PAPER, borderRadius: 6, borderLeft: `3px solid ${MOSS}`, marginBottom: 4 }}>
+                      <div style={{ fontSize: 9, color: MUTED, marginBottom: 2 }}>{c.author} · {c.createdAt}</div>
+                      <div style={{ fontSize: 12, color: INK, lineHeight: 1.4 }}>{c.text}</div>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Dodaj komentar..."
+                      onKeyDown={(e) => { if (e.key === "Enter") addComment(t.id); }}
+                      style={{ flex: 1, border: `1px solid ${RULE}`, borderRadius: 6, padding: isMobile ? "10px 12px" : "7px 10px", fontSize: isMobile ? 14 : 12, background: PAPER, color: INK, fontFamily: "'Inter', sans-serif", outline: "none", minHeight: isMobile ? 44 : "auto" }} />
+                    <Btn primary onClick={() => addComment(t.id)} style={{ padding: isMobile ? "10px 14px" : "7px 12px", minHeight: isMobile ? 44 : "auto" }}><Plus size={isMobile ? 16 : 13} /></Btn>
+                  </div>
+                </div>
               )}
             </div>
           );
@@ -2041,6 +2308,7 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile }) {
     </div>
   );
 }
+
 
 /* ═══════════════════════════════════════════
    MAIN APP KOMPONENT
@@ -2056,8 +2324,6 @@ export default function App() {
   const [pdfStatus, setPdfStatus] = useState("");
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("all");
-  const [logoDataUrl, setLogoDataUrl] = useState("");
-  const [logoAspectRatio, setLogoAspectRatio] = useState(1);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState("worker");
@@ -2068,6 +2334,9 @@ export default function App() {
   const [panelProjectId, setPanelProjectId] = useState(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [supabaseRadnici, setSupabaseRadnici] = useState([]);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth <= 768 : false);
 
   // Persist projects to localStorage
@@ -2096,7 +2365,7 @@ export default function App() {
     return () => { active = false; listener?.subscription?.unsubscribe?.(); };
   }, []);
 
-  // Load role
+  // Load role + all workers
   useEffect(() => {
     async function loadRole() {
       if (!session?.user?.id) { setUserRole("worker"); setUserName("Korisnik"); setAccessMode("worker"); return; }
@@ -2105,6 +2374,11 @@ export default function App() {
       setUserRole(role);
       setUserName(data?.name || session.user.email || "Korisnik");
       setAccessMode(role);
+      // Load all workers from profiles
+      const { data: allProfiles } = await supabase.from("profiles").select("name, role");
+      if (allProfiles) {
+        setSupabaseRadnici(allProfiles.map(p => p.name).filter(Boolean));
+      }
     }
     loadRole();
   }, [session]);
@@ -2140,10 +2414,17 @@ export default function App() {
     }
   }, [session?.user?.id]);
 
-  // Realtime subscription
+  // Realtime subscription - projekti
   useEffect(() => {
     if (!session?.user?.id) return;
     const ch = supabase.channel("projects-rt").on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => loadProjectsFromCloud(false)).subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [session?.user?.id]);
+
+  // Realtime subscription - zadaci
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const ch = supabase.channel("tasks-rt").on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadTasksFromCloud()).subscribe();
     return () => supabase.removeChannel(ch);
   }, [session?.user?.id]);
 
@@ -2168,20 +2449,18 @@ export default function App() {
     return () => clearTimeout(t);
   }, [projects, session?.user?.id, userRole, cloudLoaded]);
 
-  // Sync tasks to cloud
+  // Sync tasks to cloud - SVI korisnici
   useEffect(() => {
     if (!session?.user?.id || !cloudLoaded) return;
     const t = setTimeout(async () => {
       try {
         const now = new Date().toISOString();
-        if (userRole === "admin") {
-          const rows = tasks.map((tk) => ({ id: tk.id, owner_id: session.user.id, data: tk, updated_at: now }));
-          await supabase.from("tasks").upsert(rows, { onConflict: "id" });
-        }
+        const rows = tasks.map((tk) => ({ id: tk.id, owner_id: session.user.id, data: tk, updated_at: now }));
+        await supabase.from("tasks").upsert(rows, { onConflict: "id" });
       } catch {}
     }, 1200);
     return () => clearTimeout(t);
-  }, [tasks, session?.user?.id, userRole, cloudLoaded]);
+  }, [tasks, session?.user?.id, cloudLoaded]);
 
   // Settings persist
   useEffect(() => {
@@ -2192,28 +2471,6 @@ export default function App() {
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth <= 768);
     h(); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h);
-  }, []);
-
-  // Load logo
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const resp = await fetch(logoUrl);
-        const blob = await resp.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (!active) return;
-          const du = String(reader.result || "");
-          setLogoDataUrl(du);
-          const img = new Image();
-          img.onload = () => { if (active) setLogoAspectRatio(img.naturalWidth / img.naturalHeight || 1); };
-          img.src = du;
-        };
-        reader.readAsDataURL(blob);
-      } catch { if (active) setLogoDataUrl(""); }
-    })();
-    return () => { active = false; };
   }, []);
 
   // Derived data
@@ -2235,6 +2492,7 @@ export default function App() {
 
   const selectedProject = projects.find((p) => p.id === selectedId) || filteredProjects[0] || null;
   const panelProject = projects.find((p) => p.id === panelProjectId) || null;
+  const editingProject = projects.find((p) => p.id === editingProjectId) || null;
   const isAdmin = userRole === "admin" && accessMode === "admin";
 
   // Actions
@@ -2242,6 +2500,11 @@ export default function App() {
     const id = `POP-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setNotifications((c) => [{ id, message, createdAt: new Date().toLocaleTimeString("sr-Latn-ME") }, ...c].slice(0, 4));
     setTimeout(() => setNotifications((c) => c.filter((i) => i.id !== id)), 4500);
+  }
+
+  function handleSaveEditedProject(updated) {
+    setProjects((c) => c.map((p) => p.id === updated.id ? updated : p));
+    showPopup(`Izmijenjeno: ${updated.nazivPredmeta || updated.projectCode}`);
   }
 
   function updateProject(projectId, updater) {
@@ -2313,7 +2576,7 @@ export default function App() {
     const recalc = recalcChecklist(selectedProject.checklist);
     const offer = {
       id: `OFF-${Date.now()}`,
-      number: recalc.ponudaBroj || `${selectedProject.projectSequence}-${selectedProject.projectYear}`,
+      number: recalc.ponudaBroj || buildOfferNumber(selectedProject),
       date: recalc.ponudaDatum || todayIso(),
       amount: Number(recalc.ukupnaPonudaBezPdv || 0),
       description: buildDefaultOfferDescription(selectedProject),
@@ -2334,7 +2597,7 @@ export default function App() {
     if (!project) return;
     const checklist = recalcChecklist(project.checklist);
     const offer = project.offers[0] || {
-      number: checklist.ponudaBroj || `${project.projectSequence}-${project.projectYear}`,
+      number: checklist.ponudaBroj || buildOfferNumber(project),
       date: checklist.ponudaDatum || todayIso(),
       amount: Number(checklist.ukupnaPonudaBezPdv || 0),
       description: buildDefaultOfferDescription(project),
@@ -2345,132 +2608,143 @@ export default function App() {
     };
     try {
       const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
-      const pw = 210, margin = 12, cw = pw - margin * 2;
-      let y = 12;
+      const pw = 210, margin = 15, cw = pw - margin * 2;
+      let y = 15;
 
       const clamp = (t, mx) => { const s = sanitizePdfText(t || ""); return s.length <= mx ? s : s.slice(0, mx - 3) + "..."; };
-      const writeWrap = (t, x, ys, mw, lh, ml, opts = {}) => {
+      const writeWrap = (t, x, ys, mw, lh, ml) => {
         const lines = pdf.splitTextToSize(sanitizePdfText(t || ""), mw).slice(0, ml);
         if (lines.length === ml) { const li = lines.length - 1; lines[li] = lines[li].slice(0, -3) + "..."; }
-        pdf.text(lines, x, ys, opts);
+        pdf.text(lines, x, ys);
         return ys + lines.length * lh;
       };
 
-      // Ink & Moss PDF header
-      const mossR = 61, mossG = 74, mossB = 61;
-      const sageR = 107, sageG = 122, sageB = 107;
-      const linenR = 240, linenG = 238, linenB = 232;
-      const ruleR = 224, ruleG = 221, ruleB = 213;
-      const inkR = 14, inkG = 14, inkB = 14;
+      // ═══ MONOCHROME HEADER (per template) ═══
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(14);
+      pdf.text("AVM", margin, y + 4);
+      const avmW = pdf.getTextWidth("AVM ");
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(14);
+      pdf.text("ARCHITECTS", margin + avmW, y + 4);
+      pdf.setFontSize(8);
+      pdf.text("avmarchitects.me", pw - margin, y + 4, { align: "right" });
+      y += 7;
+      // Horizontal line
+      pdf.setDrawColor(0, 0, 0); pdf.setLineWidth(0.4);
+      pdf.line(margin, y, pw - margin, y);
+      y += 4;
+      pdf.setFontSize(7); pdf.setTextColor(80, 80, 80);
+      pdf.text("arhitektura   konzervacija", margin, y);
+      y += 10;
 
-      pdf.setFillColor(mossR, mossG, mossB);
-      pdf.roundedRect(margin, y, cw, 34, 3, 3, "F");
-      if (logoDataUrl) {
-        try { const lw = 44, lh = lw / Math.max(logoAspectRatio, 0.1); pdf.addImage(logoDataUrl, "PNG", margin + 4, y + (34 - lh) / 2, lw, lh); } catch {}
-      }
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(15);
-      pdf.text("PONUDA", pw - margin - 30, y + 13);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8.5);
-      pdf.text(sanitizePdfText(`br. ${offer.number}`), pw - margin - 30, y + 21);
-      y += 42;
+      // ═══ TITLE ═══
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(8); pdf.setFont("helvetica", "normal");
+      pdf.text("PONUDA", margin, y); y += 6;
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(22);
+      pdf.text("PONUDA", margin, y); y += 10;
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
+      pdf.text(sanitizePdfText(`br. ${offer.number}`), margin, y); y += 4;
+      // Offer description as subtitle
+      pdf.setFont("helvetica", "italic"); pdf.setFontSize(8.5);
+      y = writeWrap(offer.description || "", margin, y + 2, cw, 4, 3);
+      y += 6;
 
-      // Info row - linen bg
-      pdf.setFillColor(linenR, linenG, linenB); pdf.setDrawColor(ruleR, ruleG, ruleB);
-      pdf.roundedRect(margin, y, cw, 16, 2, 2, "FD");
-      pdf.setTextColor(sageR, sageG, sageB);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7);
-      pdf.text("INVESTITOR", margin + 3, y + 5);
-      pdf.text("DATUM", margin + 140, y + 5);
-      pdf.setTextColor(inkR, inkG, inkB);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      pdf.text(clamp(project.investitor || "-", 34), margin + 3, y + 11);
-      pdf.text(sanitizePdfText(formatDisplayDate(offer.date) || "-"), margin + 140, y + 11);
-      y += 22;
+      // ═══ INFO TABLE (simple borders like template) ═══
+      const labelW = 42, valW = cw - labelW;
+      const rh = 8;
+      pdf.setDrawColor(0, 0, 0); pdf.setLineWidth(0.2);
+      const infoRows = [
+        ["PREDMET", sanitizePdfText(project.nazivPredmeta || "-")],
+        ["LOKACIJA", sanitizePdfText(`KP ${project.parcela || "-"}, KO ${project.katastarskaOpstina || "-"}, Opstina ${project.opstina || "-"}`)],
+        ["INVESTITOR", sanitizePdfText(project.investitor || "-")],
+        ["PROJEKTANT", sanitizePdfText(project.projektant || "-")],
+        ["NOSILAC IZRADE KP", "AVM architects d.o.o. Podgorica"],
+        ["DATUM", sanitizePdfText(`Podgorica, ${formatDisplayDate(offer.date) || "-"}. godine`)],
+      ];
+      infoRows.forEach(([label, value]) => {
+        pdf.rect(margin, y, labelW, rh); pdf.rect(margin + labelW, y, valW, rh);
+        pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5); pdf.setTextColor(0, 0, 0);
+        pdf.text(label, margin + 2, y + 5.5);
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
+        pdf.text(clamp(value, 70), margin + labelW + 2, y + 5.5);
+        y += rh;
+      });
+      y += 8;
 
-      // Description
-      pdf.setTextColor(inkR, inkG, inkB);
-      pdf.setFontSize(8.5);
-      y = writeWrap(`${offer.description} na katastarskoj parceli ${project.parcela || "-"}${project.katastarskaOpstina ? `, KO ${project.katastarskaOpstina}` : ""}${project.opstina ? `, ${project.opstina}` : ""}.`, margin, y, cw, 4.2, 3);
-      y += 5;
-
-      // Table - Ink & Moss palette
-      const c1 = 82, c2 = 24, c3 = 36, c4 = cw - c1 - c2 - c3, rh = 7, gap = 1.1;
-      pdf.setFillColor(mossR, mossG, mossB); pdf.setTextColor(255, 255, 255);
-      pdf.roundedRect(margin, y, cw, rh, 1.3, 1.3, "F");
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5);
+      // ═══ ITEMS TABLE (monochrome) ═══
+      const c1 = 80, c2 = 24, c3 = 36, c4 = cw - c1 - c2 - c3;
+      const trh = 7;
+      // Header row
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5); pdf.setTextColor(0, 0, 0);
+      pdf.rect(margin, y, c1, trh); pdf.rect(margin + c1, y, c2, trh);
+      pdf.rect(margin + c1 + c2, y, c3, trh); pdf.rect(margin + c1 + c2 + c3, y, c4, trh);
       pdf.text("Opis", margin + 2, y + 4.7);
       pdf.text("Jedinica", margin + c1 + 2, y + 4.7);
       pdf.text("Jed. cijena", margin + c1 + c2 + 2, y + 4.7);
       pdf.text("Ukupno", margin + c1 + c2 + c3 + 2, y + 4.7);
-      y += rh + gap;
+      y += trh;
 
-      pdf.setTextColor(inkR, inkG, inkB);
-      const drawRow = (row, opts = {}) => {
-        const bg = opts.bg || [linenR, linenG, linenB];
-        pdf.setFillColor(bg[0], bg[1], bg[2]);
-        pdf.roundedRect(margin, y, cw, rh, 1.2, 1.2, "F");
-        pdf.setFont("helvetica", opts.bold ? "bold" : "normal"); pdf.setFontSize(7.2);
-        pdf.setTextColor(inkR, inkG, inkB);
-        pdf.text(clamp(row[0], 38), margin + 2, y + 4.7);
-        pdf.text(clamp(row[1], 16), margin + c1 + 2, y + 4.7);
-        pdf.text(clamp(row[2], 18), margin + c1 + c2 + 2, y + 4.7);
-        pdf.text(clamp(row[3], 18), margin + c1 + c2 + c3 + 2, y + 4.7);
-        y += rh + gap;
-      };
-
+      // Data rows
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
       (offer.items || []).slice(0, 6).forEach((item) => {
         const tot = Number(item.quantity || 0) * Number(item.unitPrice || 0);
-        drawRow([item.description || "", `${numberFormat(item.quantity || 0)} ${item.unitLabel || ""}`.trim(), `${numberFormat(item.unitPrice || 0)} €/${item.unitLabel || ""}`, numberFormat(tot)]);
+        pdf.rect(margin, y, c1, trh); pdf.rect(margin + c1, y, c2, trh);
+        pdf.rect(margin + c1 + c2, y, c3, trh); pdf.rect(margin + c1 + c2 + c3, y, c4, trh);
+        pdf.text(clamp(item.description || "", 38), margin + 2, y + 4.7);
+        pdf.text(`${numberFormat(item.quantity || 0)} ${item.unitLabel || ""}`.trim(), margin + c1 + 2, y + 4.7);
+        pdf.text(`${numberFormat(item.unitPrice || 0)}`, margin + c1 + c2 + 2, y + 4.7);
+        pdf.text(numberFormat(tot), margin + c1 + c2 + c3 + 2, y + 4.7);
+        y += trh;
       });
 
+      // Summary rows
       const tb = Number(checklist.ukupnaPonudaBezPdv || 0);
       const f1 = Number(checklist.faza1 || 0);
       const f2 = Number(checklist.faza2 || 0);
       const pdvAmt = tb * (Number(checklist.pdvStopa || 21) / 100);
       const ts = Number(checklist.ukupnoSaPdv || 0);
 
-      drawRow(["FAZA I", "60%", "/", numberFormat(f1)], { bg: [ruleR, ruleG, ruleB] });
-      drawRow(["FAZA II", "40%", "/", numberFormat(f2)], { bg: [ruleR, ruleG, ruleB] });
-      drawRow(["UKUPNO", "", "", numberFormat(tb)], { bg: [sageR, sageG, sageB], bold: true });
-      drawRow([`PDV ${checklist.pdvStopa || 21}%`, "", "", numberFormat(pdvAmt)], { bg: [sageR, sageG, sageB], bold: true });
+      const drawSummaryRow = (label, val, bold) => {
+        pdf.setFont("helvetica", bold ? "bold" : "normal"); pdf.setFontSize(7);
+        pdf.rect(margin, y, c1 + c2 + c3, trh); pdf.rect(margin + c1 + c2 + c3, y, c4, trh);
+        pdf.text(label, margin + 2, y + 4.7);
+        pdf.text(val, margin + c1 + c2 + c3 + 2, y + 4.7);
+        y += trh;
+      };
+      drawSummaryRow("FAZA I - Konzervatorska analiza (60%)", numberFormat(f1), false);
+      drawSummaryRow("FAZA II - Konzervatorski projekat (40%)", numberFormat(f2), false);
+      drawSummaryRow("UKUPNO BEZ PDV", numberFormat(tb), true);
+      drawSummaryRow(`PDV ${checklist.pdvStopa || 21}%`, numberFormat(pdvAmt), false);
+      drawSummaryRow("UKUPNO SA PDV", `${numberFormat(ts)} EUR`, true);
+      y += 6;
 
-      // Total row in moss
-      pdf.setFillColor(mossR, mossG, mossB);
-      pdf.roundedRect(margin, y, cw, rh, 1.2, 1.2, "F");
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.2);
-      pdf.setTextColor(255, 255, 255);
-      pdf.text("UKUPNO + PDV", margin + 2, y + 4.7);
-      pdf.text(numberFormat(ts), margin + c1 + c2 + c3 + 2, y + 4.7);
-      y += rh + gap + 3;
-
-      // Phase boxes - linen
-      pdf.setTextColor(inkR, inkG, inkB);
-      pdf.setFillColor(linenR, linenG, linenB); pdf.setDrawColor(ruleR, ruleG, ruleB);
-      pdf.roundedRect(margin, y, cw, 22, 2, 2, "FD");
+      // ═══ PHASE DESCRIPTIONS ═══
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(0, 0, 0);
+      pdf.text("FAZA I - Konzervatorska analiza", margin, y); y += 4;
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
+      y = writeWrap(checklist.phase1Description || DEFAULT_PHASE_1_TEXT, margin, y, cw, 3.6, 5);
+      y += 6;
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
-      pdf.text("FAZA I", margin + 3, y + 5.5);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.2);
-      writeWrap(checklist.phase1Description || DEFAULT_PHASE_1_TEXT, margin + 3, y + 10, cw - 6, 3.4, 4);
-      y += 26;
+      pdf.text("FAZA II - Konzervatorski projekat", margin, y); y += 4;
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
+      y = writeWrap(checklist.phase2Description || DEFAULT_PHASE_2_TEXT, margin, y, cw, 3.6, 5);
 
-      pdf.setFillColor(linenR, linenG, linenB);
-      pdf.roundedRect(margin, y, cw, 22, 2, 2, "FD");
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
-      pdf.text("FAZA II", margin + 3, y + 5.5);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.2);
-      writeWrap(checklist.phase2Description || DEFAULT_PHASE_2_TEXT, margin + 3, y + 10, cw - 6, 3.4, 4);
+      // ═══ SIGNATURE (bottom) ═══
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(0, 0, 0);
+      pdf.text("Mjesto i datum:", margin, 258);
+      pdf.text(sanitizePdfText(`Podgorica, ${formatDisplayDate(offer.date)}. godine`), margin, 264);
+      pdf.text("Odgovorno lice u okviru pravnog lica", 130, 258);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
+      pdf.text("Andrija Vuksanovic spec.sci.arh.", 140, 270);
 
-      // Footer
-      pdf.setTextColor(sageR, sageG, sageB);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      pdf.text(sanitizePdfText(`Podgorica, ${formatDisplayDate(offer.date)}.`), margin, 282);
-      pdf.setTextColor(mossR, mossG, mossB);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8);
-      pdf.text("AVM architects d.o.o.", 145, 282);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.2);
-      pdf.text("Andrija Vuksanovic", 145, 287);
-      pdf.text("spec.Sci.arh. konzervator", 145, 291);
+      // ═══ PAGE FOOTER ═══
+      pdf.setDrawColor(0, 0, 0); pdf.setLineWidth(0.3);
+      pdf.line(margin, 286, pw - margin, 286);
+      pdf.setFontSize(7); pdf.setTextColor(80, 80, 80);
+      pdf.text("e-mail: avm.arhitektura@gmail.com", margin, 290);
+      pdf.text("telefon: 069/555-216", pw / 2, 290, { align: "center" });
+      pdf.text("Str. 1 / 1", pw - margin, 290, { align: "right" });
 
       // Save to Ponude folder
       const fileName = buildOfferFileName(project);
@@ -2501,7 +2775,7 @@ export default function App() {
     const created = normalizeProject({
       id: `PRJ-${Date.now()}`, ...newProject, projectYear: year, projectMonth: month, projectSequence: seq,
       projectCode: code, folderPath: buildProjectFolderPath(baseFolderPath, { ...newProject, projectCode: code, projectSequence: seq, projectYear: year, projectMonth: month }),
-      checklist: recalcChecklist({ offerOpis: buildDefaultOfferDescription(newProject), pdvStopa: 21, phase1Description: DEFAULT_PHASE_1_TEXT, phase2Description: DEFAULT_PHASE_2_TEXT, offerItems: [makeOfferItem(1)] }),
+      checklist: recalcChecklist({ offerOpis: buildDefaultOfferDescription(newProject), ponudaBroj: buildOfferNumber({ ...newProject, projectSequence: seq, projectYear: year, projectMonth: month }), pdvStopa: 21, phase1Description: DEFAULT_PHASE_1_TEXT, phase2Description: DEFAULT_PHASE_2_TEXT, offerItems: [makeOfferItem(1)] }),
     });
     if (!created.nazivPredmeta || !created.investitor) { window.alert("Unesi naziv predmeta i investitora."); return; }
 
@@ -2586,8 +2860,10 @@ export default function App() {
   async function logout() { await supabase.auth.signOut(); }
 
   // Dependent KO list for new project form
-  const newProjectKOList = KATASTARSKE_OPSTINE[newProject.opstina] || [];
-  const newProjectPlanskiList = PLANSKI_DOKUMENTI[newProject.opstina] || [];
+  const newProjectKOList = getMergedKONames(newProject.opstina);
+  const newProjectPlanskiList = getMergedPlanski(newProject.opstina);
+  const newProjectRadniciList = getMergedRadnici(supabaseRadnici);
+  const newProjectOpstinaList = getMergedOpstinaNames();
 
   // Current project code preview
   const previewKoCode = getKOCode(newProject.opstina, newProject.katastarskaOpstina);
@@ -2649,6 +2925,18 @@ export default function App() {
         />
       )}
 
+      {/* Edit Project Modal */}
+      {showEditModal && editingProject && (
+        <EditProjectModal
+          project={editingProject}
+          onSave={handleSaveEditedProject}
+          onClose={() => { setShowEditModal(false); setEditingProjectId(null); }}
+          isMobile={isMobile}
+          baseFolderPath={baseFolderPath}
+          radniciList={newProjectRadniciList}
+        />
+      )}
+
       {/* Side panel overlay */}
       {panelProjectId && (
         <>
@@ -2665,6 +2953,8 @@ export default function App() {
             userName={userName}
             isMobile={isMobile}
             tasks={tasks}
+            onEdit={() => { setEditingProjectId(panelProjectId); setShowEditModal(true); }}
+            radniciList={newProjectRadniciList}
           />
         </>
       )}
@@ -2680,7 +2970,6 @@ export default function App() {
             {/* Brand */}
             <div style={{ padding: "4px 0", borderBottom: `1px solid ${RULE}`, paddingBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <img src={logoUrl} alt="AVM" style={{ width: 32, height: 32, objectFit: "contain" }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "0.06em", color: INK }}>AVM</div>
                   <div style={{ fontSize: 10, fontWeight: 400, color: SAGE, letterSpacing: "0.04em" }}>ARCHITECTS</div>
@@ -2787,9 +3076,9 @@ export default function App() {
           {/* Mobile top bar */}
           {isMobile && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <img src={logoUrl} alt="AVM" style={{ width: 28, height: 28, objectFit: "contain" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.06em" }}>AVM</span>
+                <span style={{ fontSize: 12, fontWeight: 400, color: SAGE }}>ARCHITECTS</span>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <Btn onClick={saveNow} style={{ padding: "10px 12px", fontSize: 12, minHeight: 44 }}><Save size={16} /></Btn>
@@ -2869,7 +3158,7 @@ export default function App() {
           )}
 
           {page === "tasks" && (
-            <TasksView tasks={tasks} setTasks={setTasks} projects={projects} isAdmin={isAdmin} userName={userName} isMobile={isMobile} />
+            <TasksView tasks={tasks} setTasks={setTasks} projects={projects} isAdmin={isAdmin} userName={userName} isMobile={isMobile} radniciList={newProjectRadniciList} onDeleteFromCloud={async (taskId) => { try { await supabase.from("tasks").delete().eq("id", taskId); } catch {} }} />
           )}
         </main>
       </div>
@@ -2885,7 +3174,7 @@ export default function App() {
             { id: "pipeline", label: "Pipeline", icon: LayoutGrid },
             { id: "tasks", label: "Zadaci", icon: ListTodo },
             { id: "checklist", label: "Checklista", icon: Table },
-            { id: "newproject", label: "Novi", icon: Plus },
+            ...(isAdmin ? [{ id: "newproject", label: "Novi", icon: Plus }] : []),
           ].map((n) => {
             const Icon = n.icon;
             const active = n.id === "newproject" ? false : page === n.id;
@@ -2926,7 +3215,7 @@ export default function App() {
             <div style={{ background: CREAM, borderRadius: 8, padding: 10, marginBottom: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: "0.06em", textTransform: "uppercase" }}>Kod projekta (preview)</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: MOSS, marginTop: 4 }}>{previewCode}</div>
-              <div style={{ fontSize: 10, color: SAGE, marginTop: 2 }}>Folder: {buildProjectFolderCode(previewSeq, newProject.projectYear || ACTIVE_YEAR, newProject.projectMonth || new Date().getMonth() + 1, previewKoCode, previewOpCode)}</div>
+              <div style={{ fontSize: 10, color: SAGE, marginTop: 2 }}>Ponuda: P-{buildProjectFolderCode(previewSeq, newProject.projectYear || ACTIVE_YEAR, newProject.projectMonth || new Date().getMonth() + 1, previewKoCode, previewOpCode)}</div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -2938,22 +3227,15 @@ export default function App() {
               </Select>
               <Input label="Datum početka" type="date" value={newProject.startDate} onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))} />
 
-              {/* Opština dropdown */}
-              <Select label="Opština" value={newProject.opstina} onChange={(e) => {
-                const val = e.target.value;
-                setNewProject((p) => ({ ...p, opstina: val, katastarskaOpstina: "", planskiDokument: "" }));
-              }}>
-                <option value="">— Odaberi opštinu —</option>
-                {OPSTINE_CODES.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.code})</option>)}
-              </Select>
+              {/* Opština - ComboInput */}
+              <ComboInput label="Opština" value={newProject.opstina}
+                onChange={(val) => setNewProject((p) => ({ ...p, opstina: val, katastarskaOpstina: "", planskiDokument: "" }))}
+                options={newProjectOpstinaList} customCategory="opstine" placeholder="Odaberi ili unesi opštinu" />
 
-              {/* Katastarska opština dropdown - zavisan */}
-              <Select label="Katastarska opština" value={newProject.katastarskaOpstina} onChange={(e) => {
-                setNewProject((p) => ({ ...p, katastarskaOpstina: e.target.value }));
-              }}>
-                <option value="">— Odaberi KO —</option>
-                {newProjectKOList.map((k) => <option key={k.name} value={k.name}>{k.name} ({k.code})</option>)}
-              </Select>
+              {/* Katastarska opština - ComboInput */}
+              <ComboInput label="Katastarska opština" value={newProject.katastarskaOpstina}
+                onChange={(val) => setNewProject((p) => ({ ...p, katastarskaOpstina: val }))}
+                options={newProjectKOList} customCategory={newProject.opstina ? `ko_${newProject.opstina}` : null} placeholder="Odaberi ili unesi KO" />
 
               <div style={{ gridColumn: "1/-1" }}><Input label="Naziv predmeta" value={newProject.nazivPredmeta} onChange={(e) => setNewProject((p) => ({ ...p, nazivPredmeta: e.target.value }))} /></div>
               <Input label="Investitor" value={newProject.investitor} onChange={(e) => setNewProject((p) => ({ ...p, investitor: e.target.value }))} />
@@ -2962,17 +3244,15 @@ export default function App() {
               <Input label="Katastarska parcela" value={newProject.parcela} onChange={(e) => setNewProject((p) => ({ ...p, parcela: e.target.value }))} />
               <Input label="Urbanistička parcela" value={newProject.urbanistickaParcela} onChange={(e) => setNewProject((p) => ({ ...p, urbanistickaParcela: e.target.value }))} />
 
-              {/* Planski dokument dropdown */}
-              <Select label="Planski dokument" value={newProject.planskiDokument} onChange={(e) => setNewProject((p) => ({ ...p, planskiDokument: e.target.value }))}>
-                <option value="">— Odaberi planski dokument —</option>
-                {newProjectPlanskiList.map((d) => <option key={d} value={d}>{d}</option>)}
-              </Select>
+              {/* Planski dokument - ComboInput */}
+              <ComboInput label="Planski dokument" value={newProject.planskiDokument}
+                onChange={(val) => setNewProject((p) => ({ ...p, planskiDokument: val }))}
+                options={newProjectPlanskiList} customCategory={newProject.opstina ? `planski_${newProject.opstina}` : null} placeholder="Odaberi ili unesi plan" />
 
-              {/* Radnik dropdown */}
-              <Select label="Dodijeljeni radnik" value={newProject.assignedTo} onChange={(e) => setNewProject((p) => ({ ...p, assignedTo: e.target.value }))}>
-                <option value="">— Odaberi —</option>
-                {RADNICI.map((r) => <option key={r} value={r}>{r}</option>)}
-              </Select>
+              {/* Radnik - ComboInput */}
+              <ComboInput label="Dodijeljeni radnik" value={newProject.assignedTo}
+                onChange={(val) => setNewProject((p) => ({ ...p, assignedTo: val }))}
+                options={newProjectRadniciList} customCategory="radnici" placeholder="Odaberi ili unesi radnika" />
 
               {/* Google Maps picker */}
               <div style={{ gridColumn: "1/-1" }}>
@@ -3024,9 +3304,9 @@ function SidebarBtn({ children, active, danger, onClick, style: extraStyle }) {
   let color = SAGE;
   let border = "none";
 
-  if (active) { bg = MOSS; color = PAPER; }
+  if (active) { bg = "#ebebeb"; color = INK; }
   else if (danger) { color = DANGER; if (hovered) { bg = DANGER_BG; border = `1px solid ${DANGER_BORDER}`; } }
-  else if (hovered) { border = `1px solid ${RULE}`; bg = LINEN; color = INK; }
+  else if (hovered) { bg = "#f5f5f5"; color = INK; }
 
   return (
     <button
