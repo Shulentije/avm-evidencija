@@ -2166,7 +2166,7 @@ function OffersEditor({ project, updateChecklistField, updateSelectedOfferItem, 
 /* ═══════════════════════════════════════════
    ZADACI (TODO) POGLED
    ═══════════════════════════════════════════ */
-function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile, radniciList, onDeleteFromCloud }) {
+function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile, radniciList, onDeleteFromCloud, onSyncTask }) {
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskAssigned, setNewTaskAssigned] = useState("");
   const [newTaskProject, setNewTaskProject] = useState("");
@@ -2196,11 +2196,18 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile, rad
       comments: [],
     };
     setTasks((cur) => [task, ...cur]);
+    if (onSyncTask) onSyncTask(task);
     setNewTaskText(""); setNewTaskAssigned(""); setNewTaskProject(""); setNewTaskDue("");
   }
 
   function toggleTask(taskId) {
-    setTasks((cur) => cur.map((t) => t.id === taskId ? { ...t, status: t.status === "otvoren" ? "završen" : "otvoren" } : t));
+    let updated = null;
+    setTasks((cur) => cur.map((t) => {
+      if (t.id !== taskId) return t;
+      updated = { ...t, status: t.status === "otvoren" ? "završen" : "otvoren" };
+      return updated;
+    }));
+    setTimeout(() => { if (onSyncTask && updated) onSyncTask(updated); }, 50);
   }
 
   function deleteTask(taskId) {
@@ -2211,15 +2218,19 @@ function TasksView({ tasks, setTasks, projects, isAdmin, userName, isMobile, rad
 
   function addComment(taskId) {
     if (!commentText.trim()) return;
+    const newComment = {
+      id: `CMT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      text: commentText.trim(), author: userName,
+      createdAt: new Date().toLocaleString("sr-Latn-ME"),
+    };
+    let updated = null;
     setTasks((cur) => cur.map((t) => {
       if (t.id !== taskId) return t;
       const comments = Array.isArray(t.comments) ? t.comments : [];
-      return { ...t, comments: [...comments, {
-        id: `CMT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        text: commentText.trim(), author: userName,
-        createdAt: new Date().toLocaleString("sr-Latn-ME"),
-      }] };
+      updated = { ...t, comments: [...comments, newComment] };
+      return updated;
     }));
+    setTimeout(() => { if (onSyncTask && updated) onSyncTask(updated); }, 50);
     setCommentText("");
   }
 
@@ -2383,27 +2394,59 @@ export default function App() {
     loadRole();
   }, [session]);
 
-  // Cloud load projects
+  // Cloud load projects - SMART MERGE
   async function loadProjectsFromCloud(showLoading = true) {
     if (!session?.user?.id) return;
     if (showLoading) setSyncStatus("Učitavanje...");
     const { data, error } = await supabase.from("projects").select("id, data, updated_at").order("updated_at", { ascending: false });
     if (error) { setSyncStatus("Online učitavanje nije uspjelo."); setCloudLoaded(true); return; }
     const cloud = Array.isArray(data) ? data.map((r) => normalizeProject(r.data || { id: r.id })) : [];
-    if (cloud.length) { setProjects(cloud); setSelectedId((c) => c || cloud[0]?.id || null); setSyncStatus("Online učitani."); }
-    else { setSyncStatus("Online baza prazna."); }
+    if (cloud.length) {
+      setProjects((localProjects) => {
+        const merged = new Map();
+        cloud.forEach((p) => merged.set(p.id, p));
+        // Dodaj lokalne projekte koji još nisu u cloudu
+        localProjects.forEach((p) => {
+          if (!merged.has(p.id)) merged.set(p.id, p);
+        });
+        return Array.from(merged.values());
+      });
+      setSelectedId((c) => c || cloud[0]?.id || null);
+      setSyncStatus("Sinhronizovano.");
+    } else { setSyncStatus("Online baza prazna."); }
     setCloudLoaded(true);
   }
 
-  // Cloud load tasks
+  // Cloud load tasks - SMART MERGE (ne prepisuje lokalne promjene)
   async function loadTasksFromCloud() {
     if (!session?.user?.id) return;
     try {
       const { data } = await supabase.from("tasks").select("id, data, updated_at").order("updated_at", { ascending: false });
       if (data?.length) {
         const cloud = data.map((r) => r.data || {});
-        setTasks(cloud);
+        setTasks((localTasks) => {
+          // Merge: za svaki task, uzmi verziju sa više komentara ili novijim updated_at
+          const merged = new Map();
+          cloud.forEach((t) => merged.set(t.id, t));
+          localTasks.forEach((t) => {
+            const existing = merged.get(t.id);
+            if (!existing) { merged.set(t.id, t); return; }
+            const localComments = Array.isArray(t.comments) ? t.comments.length : 0;
+            const cloudComments = Array.isArray(existing.comments) ? existing.comments.length : 0;
+            if (localComments > cloudComments) merged.set(t.id, t);
+          });
+          return Array.from(merged.values());
+        });
       }
+    } catch {}
+  }
+
+  // Odmah sync jedan task u cloud (bez debounce)
+  async function syncSingleTaskToCloud(task) {
+    if (!session?.user?.id) return;
+    try {
+      const now = new Date().toISOString();
+      await supabase.from("tasks").upsert({ id: task.id, owner_id: session.user.id, data: task, updated_at: now }, { onConflict: "id" });
     } catch {}
   }
 
@@ -2799,6 +2842,11 @@ export default function App() {
     setShowNewForm(false);
     setNewProject(emptyNewProject([created, ...projects], year));
     showPopup(`Novi predmet: ${created.nazivPredmeta}`);
+    // Odmah sync novi projekat u cloud
+    try {
+      const now = new Date().toISOString();
+      await supabase.from("projects").upsert({ id: created.id, owner_id: session?.user?.id, data: created, updated_at: now }, { onConflict: "id" });
+    } catch {}
   }
 
   async function deleteProject(projectId) {
@@ -3158,7 +3206,7 @@ export default function App() {
           )}
 
           {page === "tasks" && (
-            <TasksView tasks={tasks} setTasks={setTasks} projects={projects} isAdmin={isAdmin} userName={userName} isMobile={isMobile} radniciList={newProjectRadniciList} onDeleteFromCloud={async (taskId) => { try { await supabase.from("tasks").delete().eq("id", taskId); } catch {} }} />
+            <TasksView tasks={tasks} setTasks={setTasks} projects={projects} isAdmin={isAdmin} userName={userName} isMobile={isMobile} radniciList={newProjectRadniciList} onDeleteFromCloud={async (taskId) => { try { await supabase.from("tasks").delete().eq("id", taskId); } catch {} }} onSyncTask={syncSingleTaskToCloud} />
           )}
         </main>
       </div>
