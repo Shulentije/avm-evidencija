@@ -2394,7 +2394,7 @@ export default function App() {
     loadRole();
   }, [session]);
 
-  // Cloud load projects - SMART MERGE
+  // Cloud load projects - cloud je istina (novi projekti se odmah sync-uju)
   async function loadProjectsFromCloud(showLoading = true) {
     if (!session?.user?.id) return;
     if (showLoading) setSyncStatus("Učitavanje...");
@@ -2402,41 +2402,21 @@ export default function App() {
     if (error) { setSyncStatus("Online učitavanje nije uspjelo."); setCloudLoaded(true); return; }
     const cloud = Array.isArray(data) ? data.map((r) => normalizeProject(r.data || { id: r.id })) : [];
     if (cloud.length) {
-      setProjects((localProjects) => {
-        const merged = new Map();
-        cloud.forEach((p) => merged.set(p.id, p));
-        // Dodaj lokalne projekte koji još nisu u cloudu
-        localProjects.forEach((p) => {
-          if (!merged.has(p.id)) merged.set(p.id, p);
-        });
-        return Array.from(merged.values());
-      });
+      setProjects(cloud);
       setSelectedId((c) => c || cloud[0]?.id || null);
       setSyncStatus("Sinhronizovano.");
     } else { setSyncStatus("Online baza prazna."); }
     setCloudLoaded(true);
   }
 
-  // Cloud load tasks - SMART MERGE (ne prepisuje lokalne promjene)
+  // Cloud load tasks - cloud je istina (komentari se odmah sync-uju)
   async function loadTasksFromCloud() {
     if (!session?.user?.id) return;
     try {
       const { data } = await supabase.from("tasks").select("id, data, updated_at").order("updated_at", { ascending: false });
       if (data?.length) {
         const cloud = data.map((r) => r.data || {});
-        setTasks((localTasks) => {
-          // Merge: za svaki task, uzmi verziju sa više komentara ili novijim updated_at
-          const merged = new Map();
-          cloud.forEach((t) => merged.set(t.id, t));
-          localTasks.forEach((t) => {
-            const existing = merged.get(t.id);
-            if (!existing) { merged.set(t.id, t); return; }
-            const localComments = Array.isArray(t.comments) ? t.comments.length : 0;
-            const cloudComments = Array.isArray(existing.comments) ? existing.comments.length : 0;
-            if (localComments > cloudComments) merged.set(t.id, t);
-          });
-          return Array.from(merged.values());
-        });
+        setTasks(cloud);
       }
     } catch {}
   }
