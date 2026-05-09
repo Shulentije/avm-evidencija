@@ -834,6 +834,18 @@ function removeCustomItem(category, value) {
 }
 function getCustomItems(category) { return loadCustomData()[category] || []; }
 function isCustomItem(category, value) { return getCustomItems(category).includes(value); }
+
+function setCustomKOCode(opstina, koName, code) {
+  const d = loadCustomData();
+  if (!d.ko_codes) d.ko_codes = {};
+  d.ko_codes[`${opstina}__${koName}`] = code;
+  saveCustomData(d);
+}
+function getCustomKOCode(opstina, koName) {
+  const d = loadCustomData();
+  return d.ko_codes?.[`${opstina}__${koName}`] || null;
+}
+
 function getMergedRadnici(supabaseNames = []) { return [...new Set([...RADNICI, ...supabaseNames, ...getCustomItems("radnici")])]; }
 function getMergedOpstinaNames() { return [...new Set([...OPSTINE_CODES.map(o => o.name), ...getCustomItems("opstine")])]; }
 function getMergedKONames(opstina) {
@@ -865,9 +877,14 @@ function getOpstinaCode(opstinaName) {
 
 function getKOCode(opstinaName, koName) {
   const koList = KATASTARSKE_OPSTINE[opstinaName];
-  if (!koList) return "XX";
-  const found = koList.find((k) => k.name === koName);
-  return found ? found.code : "XX";
+  if (koList) {
+    const found = koList.find((k) => k.name === koName);
+    if (found) return found.code;
+  }
+  // Provjeri custom kod
+  const customCode = getCustomKOCode(opstinaName, koName);
+  if (customCode) return customCode;
+  return koName ? koName.slice(0, 2).toUpperCase() : "XX";
 }
 
 function getNextSequenceForKO(projects, koName, year) {
@@ -1315,7 +1332,7 @@ function GoogleMapsPicker({ onSelect, onClose, initialLat, initialLng }) {
 /* ═══════════════════════════════════════════
    COMBO INPUT - Dropdown + manual entry + save + delete
    ═══════════════════════════════════════════ */
-function ComboInput({ label, value, onChange, options = [], customCategory, placeholder = "" }) {
+function ComboInput({ label, value, onChange, options = [], customCategory, placeholder = "", onNewEntry }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const ref = useRef(null);
@@ -1343,6 +1360,7 @@ function ComboInput({ label, value, onChange, options = [], customCategory, plac
     setTimeout(() => {
       if (customCategory && inputVal.trim() && !options.includes(inputVal.trim())) {
         addCustomItem(customCategory, inputVal.trim());
+        if (onNewEntry) onNewEntry(inputVal.trim());
       }
     }, 200);
   }
@@ -1632,7 +1650,8 @@ function EditProjectModal({ project, onSave, onClose, isMobile, baseFolderPath, 
           <Input label="Katastarska parcela" value={form.parcela} onChange={(e) => set("parcela", e.target.value)} />
           <Input label="Urbanistička parcela" value={form.urbanistickaParcela} onChange={(e) => set("urbanistickaParcela", e.target.value)} />
           <ComboInput label="Opština" value={form.opstina} onChange={(v) => { set("opstina", v); set("katastarskaOpstina", ""); set("planskiDokument", ""); }} options={opstinaOptions} customCategory="opstine" />
-          <ComboInput label="Katastarska opština" value={form.katastarskaOpstina} onChange={(v) => set("katastarskaOpstina", v)} options={koOptions} customCategory={form.opstina ? `ko_${form.opstina}` : null} />
+          <ComboInput label="Katastarska opština" value={form.katastarskaOpstina} onChange={(v) => set("katastarskaOpstina", v)} options={koOptions} customCategory={form.opstina ? `ko_${form.opstina}` : null}
+            onNewEntry={(name) => { const code = window.prompt(`Unesite skraćenicu (2 slova) za "${name}":`, name.slice(0, 2).toUpperCase()); if (code && code.trim()) setCustomKOCode(form.opstina, name, code.trim().toUpperCase().slice(0, 3)); }} />
           <ComboInput label="Planski dokument" value={form.planskiDokument} onChange={(v) => set("planskiDokument", v)} options={planskiOptions} customCategory={form.opstina ? `planski_${form.opstina}` : null} />
           <ComboInput label="Dodijeljeni radnik" value={form.assignedTo} onChange={(v) => set("assignedTo", v)} options={radniciOptions} customCategory="radnici" />
           <Select label="Faza" value={form.stage} onChange={(e) => set("stage", e.target.value)}>
@@ -3288,7 +3307,8 @@ export default function App() {
               {/* Katastarska opština - ComboInput */}
               <ComboInput label="Katastarska opština" value={newProject.katastarskaOpstina}
                 onChange={(val) => setNewProject((p) => ({ ...p, katastarskaOpstina: val }))}
-                options={newProjectKOList} customCategory={newProject.opstina ? `ko_${newProject.opstina}` : null} placeholder="Odaberi ili unesi KO" />
+                options={newProjectKOList} customCategory={newProject.opstina ? `ko_${newProject.opstina}` : null} placeholder="Odaberi ili unesi KO"
+                onNewEntry={(name) => { const code = window.prompt(`Unesite skraćenicu (2-3 slova) za "${name}":`, name.slice(0, 2).toUpperCase()); if (code && code.trim()) setCustomKOCode(newProject.opstina, name, code.trim().toUpperCase().slice(0, 3)); }} />
 
               <div style={{ gridColumn: "1/-1" }}><Input label="Naziv predmeta" value={newProject.nazivPredmeta} onChange={(e) => setNewProject((p) => ({ ...p, nazivPredmeta: e.target.value }))} /></div>
               <Input label="Investitor" value={newProject.investitor} onChange={(e) => setNewProject((p) => ({ ...p, investitor: e.target.value }))} />
