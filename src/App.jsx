@@ -2400,7 +2400,11 @@ export default function App() {
     if (showLoading) setSyncStatus("Učitavanje...");
     const { data, error } = await supabase.from("projects").select("id, data, updated_at").order("updated_at", { ascending: false });
     if (error) { setSyncStatus("Online učitavanje nije uspjelo."); setCloudLoaded(true); return; }
-    const cloud = Array.isArray(data) ? data.map((r) => normalizeProject(r.data || { id: r.id })) : [];
+    const cloud = Array.isArray(data) ? data.map((r) => normalizeProject(r.data || { id: r.id })).sort((a, b) => {
+      // Sortiraj po godini (desc), pa po kodu (asc) — stabilan redosljed
+      if (a.projectYear !== b.projectYear) return Number(b.projectYear) - Number(a.projectYear);
+      return (a.projectCode || "").localeCompare(b.projectCode || "");
+    }) : [];
     if (cloud.length) {
       setProjects(cloud);
       setSelectedId((c) => c || cloud[0]?.id || null);
@@ -2528,10 +2532,31 @@ export default function App() {
   function handleSaveEditedProject(updated) {
     setProjects((c) => c.map((p) => p.id === updated.id ? updated : p));
     showPopup(`Izmijenjeno: ${updated.nazivPredmeta || updated.projectCode}`);
+    // Odmah sync
+    (async () => {
+      if (!session?.user?.id) return;
+      try {
+        const now = new Date().toISOString();
+        await supabase.from("projects").upsert({ id: updated.id, owner_id: session.user.id, data: updated, updated_at: now }, { onConflict: "id" });
+      } catch {}
+    })();
   }
 
   function updateProject(projectId, updater) {
-    setProjects((cur) => cur.map((p) => p.id === projectId ? normalizeProject(updater(p)) : p));
+    let updated = null;
+    setProjects((cur) => cur.map((p) => {
+      if (p.id !== projectId) return p;
+      updated = normalizeProject(updater(p));
+      return updated;
+    }));
+    // Odmah sync u cloud
+    setTimeout(async () => {
+      if (!updated || !session?.user?.id) return;
+      try {
+        const now = new Date().toISOString();
+        await supabase.from("projects").upsert({ id: updated.id, owner_id: session.user.id, data: updated, updated_at: now }, { onConflict: "id" });
+      } catch {}
+    }, 50);
   }
 
   function updateSelectedProject(updater) { if (selectedId) updateProject(selectedId, updater); }
